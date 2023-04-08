@@ -1,1 +1,1 @@
-# CU_2023_thesis
+# CU_thesis
