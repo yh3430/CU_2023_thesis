@@ -9,13 +9,11 @@ output: html_document
 library(tidyverse)
 library(haven)
 library(caret)
-
-#library(ggbiplot)
-#library(stats)
-#library(factoextra)
 library(cluster)
 library(nnet)
 library(broom)
+library(pROC)
+library(rpart.plot)
 ```
 Variable list:
 
@@ -164,7 +162,6 @@ summary(df_fit_state)
 ```
 
 
-
 ```{r}
 # Check for missing values
 missing_vals_1 <- is.na(df_fit_district)
@@ -281,21 +278,24 @@ models_by_site <- lapply(unique_sites_s, fit_multinom_for_site_s, data = df_fit_
 print(models_by_site)
 ```
 
-# Step 3, fit the data with multinominal logistic regression, random forest, SVM, and lasso regression
+# Step 3, fit the data with multinominal logistic regression, random forest, SVM, classfication Tree, Elastic Net, ridge, and lasso regression
 ## We use the distrcit data as training dataset, and state data as testing data
-## fit the multinominal logistic regression
+
 ```{r}
-df_district_lr <- df_fit_district %>%
+df_district_train <- df_fit_district %>%
   select(-sitename) %>%
   select(-year)
+```
 
+## fit the multinominal logistic regression
+```{r}
 set.seed(123)
 # 10-fold cross-validation
 ctrl <- trainControl(method = "cv", number = 10)
 
 # Fit the model using the cleaned dataset
 model_multinom <- train(q85 ~ .,
-              data = df_district_lr,      
+              data = df_district_train,      
               method = "multinom",   
               trControl = ctrl,     
               preProcess = c("center", "scale"))
@@ -309,10 +309,10 @@ varImp(model_multinom)
 
 
 
-multinom_outcome <- predict(model_multinom, df_district_lr, type = "raw")
+multinom_outcome <- predict(model_multinom, df_district_train, type = "raw")
 
 # Create confusion matrix
-multinom_evaluation <- confusionMatrix(multinom_outcome, df_district_lr$q85)
+multinom_evaluation <- confusionMatrix(multinom_outcome, df_district_train$q85)
 multinom_evaluation
 ```
 
@@ -324,12 +324,12 @@ multinom_evaluation
 #control_settings <- trainControl(method = "cv", number = 10, sampling = "up")
 
 # Trying three different values of mtry
-#mtry_vals_rf <- c(ncol(df_district_lr)-1, 
- #                 sqrt(ncol(df_district_lr)-1), 
-#                  0.5*ncol(df_district_lr)-1)
+#mtry_vals_rf <- c(ncol(df_district_train)-1, 
+ #                 sqrt(ncol(df_district_train)-1), 
+#                  0.5*ncol(df_district_train)-1)
 #mtry_grid_rf<- expand.grid(.mtry = round(mtry_vals_rf))
 
-#model_rf <- train(q85 ~., data = df_district_lr, 
+#model_rf <- train(q85 ~., data = df_district_train, 
 #                  method = "rf", metric = "Accuracy", 
 #                  preProc=c("center", "scale"),
 #                  tuneGrid = mtry_grid_rf, 
@@ -351,12 +351,12 @@ set.seed(123)
 control_settings <- trainControl(method = "cv", number = 10, sampling = "up")
 
 # Trying three different values of mtry
-mtry_vals_rf <- c(ncol(df_district_lr)-1, 
-                  sqrt(ncol(df_district_lr)-1), 
-                  0.5*ncol(df_district_lr)-1)
+mtry_vals_rf <- c(ncol(df_district_train)-1, 
+                  sqrt(ncol(df_district_train)-1), 
+                  0.5*ncol(df_district_train)-1)
 mtry_grid_rf<- expand.grid(.mtry = round(mtry_vals_rf))
 
-model_rf <- train(q85 ~., data = df_district_lr, 
+model_rf <- train(q85 ~., data = df_district_train, 
                   method = "rf", metric = "Accuracy", 
                   preProc=c("center", "scale"),
                   tuneGrid = mtry_grid_rf, 
@@ -368,6 +368,10 @@ model_rf$bestTune
 model_rf$finalModel
 
 varImp(model_rf)
+
+
+rf_outcome <- predict(model_rf, df_district_train, type = "raw")
+confusionMatrix(rf_outcome, df_district_train$q85)
 ```
 
 
@@ -378,12 +382,12 @@ varImp(model_rf)
 #control_settings <- trainControl(method = "cv", number = 10, sampling = "up")
 
 # Trying three different values of mtry
-#mtry_vals_rf <- c(ncol(df_district_lr)-1, 
- #                 sqrt(ncol(df_district_lr)-1), 
-#                  0.5*ncol(df_district_lr)-1)
+#mtry_vals_rf <- c(ncol(df_district_train)-1, 
+#                  sqrt(ncol(df_district_train)-1), 
+#                  0.5*ncol(df_district_train)-1)
 #mtry_grid_rf<- expand.grid(.mtry = round(mtry_vals_rf))
 
-#model_rf <- train(q85 ~., data = df_district_lr, 
+#model_rf <- train(q85 ~., data = df_district_train, 
 #                  method = "rf", metric = "Accuracy", 
 #                  preProc=c("center", "scale"),
 #                  tuneGrid = mtry_grid_rf, 
@@ -396,6 +400,189 @@ varImp(model_rf)
 
 #varImp(model_rf)
 ```
+
+
+## fit the SVM
+```{r}
+set.seed(123)
+
+# Specify training control
+train_control_svc <- trainControl(method = "cv", number = 10, sampling = "up")
+
+# Create tuning grid
+grid_svc <- expand.grid(C = seq(0.001, 2, length = 30))
+
+# Train model with cross-validation and tuning
+# Incorporate different values for cost (C)
+model_svc <- train(q85 ~ ., 
+                   data = df_district_train, 
+                   method = "svmLinear",  
+                   trControl = train_control_svc, 
+                   preProcess = c("center", "scale"), 
+                   tuneGrid = grid_svc)
+
+model_svc$bestTune
+model_svc$results
+#Visualize accuracy versus values of C
+plot(model_svc)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_svc)
+
+#See information about final model
+model_svc$finalModel
+
+svm_outcome <- predict(model_svc, df_district_train, type = "raw")
+confusionMatrix(svm_outcome, df_district_train$q85)
+```
+
+
+## fit the lasso regression
+```{r}
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_lasso <- trainControl(method = "cv", number = 10)
+
+model_lasso = train(q85 ~.,
+                    df_district_train, 
+                    method = "glmnet", 
+                    trControl = train_control_lasso, 
+                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+summary(model_lasso)
+model_lasso$bestTune
+model_lasso$results
+
+#Visualize accuracy versus values of C
+plot(model_lasso)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_lasso)
+
+varImp(model_lasso)
+
+
+lasso_outcome <- predict(model_lasso, df_district_train, type = "raw")
+confusionMatrix(lasso_outcome, df_district_train$q85)
+```
+
+
+## fit the ridge regression
+```{r}
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_ridge <- trainControl(method = "cv", number = 10)
+
+model_ridge = train(q85 ~.,
+                    df_district_train, 
+                    method = "glmnet", 
+                    trControl = train_control_ridge, 
+                    tuneGrid = expand.grid(alpha = 0, lambda = lambda))
+
+summary(model_ridge)
+model_ridge$bestTune
+model_ridge$results
+
+#Visualize accuracy versus values of C
+plot(model_ridge)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_ridge)
+
+varImp(model_ridge)
+
+
+ridge_outcome <- predict(model_ridge, df_district_train, type = "raw")
+confusionMatrix(ridge_outcome, df_district_train$q85)
+```
+
+
+# fit the Elastic Net method
+```{r}
+# model 2, chooses alpha and lambda via cross-validation using all of the features - Elastic Net method
+set.seed(123)
+
+# Construct k-folds in your data
+trcontrol = trainControl(method = "cv", number = 10, sampling = "up")
+
+# model 2 fit
+model_elastic_net <- train(q85 ~., 
+                     data = df_district_train, 
+                     method = "glmnet",
+                     trControl = trcontrol, 
+                     preProc=c("center", "scale"), 
+                     tuneLength = 10, metric = "Accuracy"
+  )
+
+# Print the values of alpha and lambda that gave best prediction
+model_elastic_net$bestTune
+
+# Print all of the options examined
+model_elastic_net$results
+
+# Model coefficients
+coef(model_elastic_net$finalModel, model_elastic_net$bestTune$lambda)
+
+
+# visualization and accuracy
+varImp(model_elastic_net)
+plot(varImp(model_elastic_net))
+confusionMatrix(model_elastic_net)
+
+
+elastic_net_outcome <- predict(model_elastic_net, df_district_train, type = "raw")
+confusionMatrix(elastic_net_outcome, df_district_train$q85)
+```
+
+
+# fit the classfication Tree model
+```{r}
+set.seed(123)
+
+#Using 10-fold cross-validation to train model
+train_control_tree <- trainControl(method = "cv", number = 10, sampling = "down")
+
+#Create sequence of cp parameters to try 
+grid_tree <- expand.grid(cp = seq(0.001, 0.3, by = 0.01))
+
+#Using rpart method to generate regression tree, using all variables in dataset to predict life expectancy
+model_tree <- train(q85 ~ . , 
+                     data = df_district_train, 
+                     method = "rpart", 
+                     trControl = train_control_tree, 
+                     tuneGrid = grid_tree)
+
+model_tree$bestTune
+model_tree$results
+
+#Can use rpart.plot function to visualize tree
+rpart.plot(model_tree$finalModel)
+
+#Note you can obtain variable importance on the final model within training data
+varImp(model_tree)
+
+
+tree_outcome <- predict(model_tree, df_district_train, type = "raw")
+confusionMatrix(tree_outcome, df_district_train$q85)
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
