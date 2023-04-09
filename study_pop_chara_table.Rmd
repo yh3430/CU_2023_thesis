@@ -51,5 +51,39 @@ df_fit_district <-
   na.omit()
 ```
 
+# study population analysis
+```{r}
+summary(df_fit_district)
+summary(df_fit_state)
+
+df_fit_state %>% 
+  group_by(sitename) %>% 
+  summarize(
+    n_obs = n()
+  )
+
+df_fit_district %>% 
+  group_by(sitename) %>% 
+  summarize(
+    n_obs = n()
+  )
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
