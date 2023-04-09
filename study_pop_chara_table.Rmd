@@ -1,0 +1,55 @@
+---
+title: "study_pop_chara_table"
+author: "Yu He"
+date: "2023-04-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# load libraries
+```{r}
+library(tidyverse)
+```
+
+# load dataset
+```{r}
+# load the processed  state data
+df_part1 = read_csv("./data/df_a_m.csv")
+df_part2 = read_csv("./data/df_n_z.csv")
+
+# merge two state dataset
+df_f_project = bind_rows(df_part1, df_part2)
+
+# load the district dataset
+df_district = read_csv("./data/df_district.csv")
+
+# the state data
+df_fit_state <- 
+  df_f_project %>% 
+  filter(year == 2019) %>% 
+  mutate(
+  across(c("sex", "age", "grade", "race4", "qnothhpl"), as.factor),
+  year = as.character(year)
+  ) %>% 
+  mutate_at(vars(starts_with("q")), as.factor) %>% 
+  filter(q85 %in% c(1, 2, 3)) %>% 
+  na.omit()
+
+# the school distrcit data
+df_fit_district <- 
+  df_district %>% 
+  filter(year == 2019) %>%
+    mutate(
+  across(c("sex", "age", "grade", "race4", "qnothhpl"), as.factor),
+  year = as.character(year)
+  ) %>% 
+  mutate_at(vars(starts_with("q")), as.factor) %>%
+  filter(q85 %in% c(1, 2, 3)) %>% 
+  na.omit()
+```
+
+
+

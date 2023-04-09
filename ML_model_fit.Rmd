@@ -121,7 +121,7 @@ df_district = read_csv("./data/df_district.csv")
 
 ## create new variables and data cleaning
 ```{r}
-# create new variables for state data
+# the state data
 df_fit_state <- 
   df_f_project %>% 
   filter(year == 2019) %>% 
@@ -133,7 +133,7 @@ df_fit_state <-
   filter(q85 %in% c(1, 2, 3)) %>% 
   na.omit()
 
-
+# the school distrcit data
 df_fit_district <- 
   df_district %>% 
   filter(year == 2019) %>%
@@ -278,7 +278,7 @@ models_by_site <- lapply(unique_sites_s, fit_multinom_for_site_s, data = df_fit_
 print(models_by_site)
 ```
 
-# Step 3, fit the data with multinominal logistic regression, random forest, SVM, classfication Tree, Elastic Net, ridge, and lasso regression
+# Step 3, fit the data with multinominal logistic regression, random forest, SVM, classfication Tree, Elastic Net, ridge, lasso regression, and classification tree
 ## We use the distrcit data as training dataset, and state data as testing data
 
 ```{r}
@@ -432,6 +432,8 @@ confusionMatrix(model_svc)
 #See information about final model
 model_svc$finalModel
 
+# varImp(model_svc)
+
 svm_outcome <- predict(model_svc, df_district_train, type = "raw")
 confusionMatrix(svm_outcome, df_district_train$q85)
 ```
@@ -503,7 +505,7 @@ confusionMatrix(ridge_outcome, df_district_train$q85)
 ```
 
 
-# fit the Elastic Net method
+## fit the Elastic Net method
 ```{r}
 # model 2, chooses alpha and lambda via cross-validation using all of the features - Elastic Net method
 set.seed(123)
@@ -541,7 +543,7 @@ confusionMatrix(elastic_net_outcome, df_district_train$q85)
 ```
 
 
-# fit the classfication Tree model
+## fit the classfication Tree model
 ```{r}
 set.seed(123)
 
@@ -573,12 +575,88 @@ confusionMatrix(tree_outcome, df_district_train$q85)
 ```
 
 
+# Step 4, evaluation and best model selection - multinominal logistic regression, random forest, SVM, classfication Tree, Elastic Net, ridge, lasso regression, and classification tree
+```{r}
+# model multinominal logistic regression
+multinom_outcome <- predict(model_multinom, df_district_train, type = "raw")
+multinom_evaluation <- confusionMatrix(multinom_outcome, df_district_train$q85, positive = "1")
+multinom_evaluation
+
+# model random forest
+rf_outcome <- predict(model_rf, df_district_train, type = "raw")
+rf_evaluation <- confusionMatrix(rf_outcome, df_district_train$q85, positive = "1")
+rf_evaluation
+
+# model SVM
+svm_outcome <- predict(model_svc, df_district_train, type = "raw")
+svm_evaluation <- confusionMatrix(svm_outcome, df_district_train$q85, positive = "1")
+svm_evaluation
+
+# model lasso
+lasso_outcome <- predict(model_lasso, df_district_train, type = "raw")
+lasso_evaluation <- confusionMatrix(lasso_outcome, df_district_train$q85, positive = "1")
+lasso_evaluation
+
+# model ridge
+ridge_outcome <- predict(model_ridge, df_district_train, type = "raw")
+ridge_evaluation <- confusionMatrix(ridge_outcome, df_district_train$q85, positive = "1")
+ridge_evaluation
+
+# model elastic net
+elastic_net_outcome <- predict(model_elastic_net, df_district_train, type = "raw")
+elastic_net_evaluation <- confusionMatrix(elastic_net_outcome, df_district_train$q85, positive = "1")
+elastic_net_evaluation
+
+# model classification tree
+tree_outcome <- predict(model_tree, df_district_train, type = "raw")
+tree_evaluation <- confusionMatrix(tree_outcome, df_district_train$q85, positive = "1")
+tree_evaluation
+```
 
 
+```{r}
+# Accuracy and 95% CI plot
+compare_resamp <- resamples(list(
+  multinom = model_multinom,
+  random_forest = model_rf,
+  SVM = model_svc,
+  lasso = model_lasso,
+  ridge = model_ridge,
+  elastic_net = model_elastic_net,
+  cla_tree = model_tree
+))
+
+summary(compare_resamp)
+dotplot(compare_resamp)
+```
 
 
+```{r}
+# create table of accuracy and kappa
+postResample(multinom_outcome, df_district_train$q85)
+postResample(rf_outcome, df_district_train$q85)
+postResample(svm_outcome, df_district_train$q85)
+postResample(lasso_outcome, df_district_train$q85)
+postResample(ridge_outcome, df_district_train$q85)
+postResample(elastic_net_outcome, df_district_train$q85)
+postResample(tree_outcome, df_district_train$q85)
+```
 
 
+# Step 5, Best tuned model applied on testing dataset - the state data
+```{r}
+# the test dataset
+df_state_test <- df_fit_state %>%
+  select(-sitename) %>%
+  select(-year)
+
+# model random forest
+rf_outcome_test <- predict(model_rf, df_state_test, type = "raw")
+rf_evaluation_test <- confusionMatrix(rf_outcome_test, df_state_test$q85, positive = "1")
+rf_evaluation_test
+
+postResample(rf_outcome_test, df_state_test$q85)
+```
 
 
 
