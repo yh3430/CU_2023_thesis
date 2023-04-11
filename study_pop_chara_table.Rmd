@@ -57,13 +57,25 @@ summary(df_fit_district)
 summary(df_fit_state)
 
 df_fit_state %>% 
-  group_by(sitename) %>% 
+  group_by(sitename, q85) %>% 
   summarize(
     n_obs = n()
   )
 
 df_fit_district %>% 
   group_by(sitename) %>% 
+  summarize(
+    n_obs = n()
+  )
+
+df_fit_state %>% 
+  group_by(q85, sitename) %>% 
+  summarize(
+    n_obs = n()
+  )
+
+df_fit_district %>% 
+  group_by(q85) %>% 
   summarize(
     n_obs = n()
   )
