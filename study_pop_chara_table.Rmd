@@ -79,10 +79,39 @@ df_fit_district %>%
   summarize(
     n_obs = n()
   )
+
+df_fit_state %>% 
+  group_by(sitename) %>% 
+  summarize(
+    n_obs = n()
+  )
+
+df_fit_state %>% 
+  group_by(q85, sitename) %>% 
+  summarize(
+    n_obs = n()
+  )
+
+summary(df_fit_state$bmi)
+
+summary(df_fit_district$bmi)
 ```
 
 
 
+```{r}
+df_fit_district %>% 
+  group_by(q89) %>% 
+  summarize(
+    n_obs = n()
+  )
+
+df_fit_district %>% 
+  group_by(q85, q89) %>% 
+  summarize(
+    n_obs = n()
+  )
+```
 
 
 

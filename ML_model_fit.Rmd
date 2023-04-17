@@ -24,13 +24,13 @@ c. Grade
 d. Race (race4)
 
 Anthropometric Factors:
-a. Height
+a. Height - remove
 b. BMI
 c. BMI Percentile - removed
 d. Obesity Indicator (qnobese) - remove
 
 Sexual Factors:
-a. Sexual Identity (sexed)
+a. Sexual Identity (sexed) - remove
 b. Birth Control Use (qnothhpl)
 c. Sexual Orientation (Q66) - remove
 
@@ -176,6 +176,7 @@ missing_vals_2 <- is.na(df_fit_state)
 # Count the number of missing values in each column
 colSums(missing_vals_2)
 ```
+
 
 # Step 2, fit the multinominal logistic regression
 ## first try to fit on the whole data, ignore clustered by sitename for now.
