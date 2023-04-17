@@ -63,24 +63,28 @@ c. Condom use (Q63)
 d. Sexual contact with different genders (Q65)
 
 Cognitive and Health Factors:
-a. HIV testing (Q84)
+a. HIV testing (Q84) - remove
 b. Asthma diagnosis (Q87)
 c. School grades (Q89)
 
 Outcome Variable:
 a. STI testing other than HIV (Q85)
 
+
+# to do list: 1, remove the variabe with 0 level like age. 2. make q50, q52, and q53 into 2 level factors?. 3 remove q84?. 4. check difference between postreample and compare_resample function
+
+
 # Step 1, data proparing
 ## data import and process, save the processed sas7dbat data into csv file to improve R runnig time. Only run one time.
 ```{r}
 # set path
-setwd("~/Desktop/CU Spring 2023/master thesis II2/CU_2023_yu")
+#setwd("~/Desktop/CU Spring 2023/master thesis II2/CU_2023_yu")
 
 # load state data a_m
 #df_a_m = read_sas("./data/sadc_2019_state_a_m.sas7bdat") %>% 
 #  janitor::clean_names() %>% 
 #  select(sitename, year, age, sex, grade, race4, bmi, qnothhpl, q85, 
-#         q17, q21, q23, q26, q30, q41, q47, q49, q50, q52, q53, q63, q65, q84, q87, q89
+#         q17, q21, q23, q26, q30, q41, q47, q49, q50, q52, q53, q63, q65, q87, q89
 #         )
 
 # save the data as a CSV file
@@ -89,8 +93,8 @@ setwd("~/Desktop/CU Spring 2023/master thesis II2/CU_2023_yu")
 # load state data n_z
 #df_n_z = read_sas("./data/sadc_2019_state_n_z.sas7bdat") %>% 
 #  janitor::clean_names() %>% 
-#    select(sitename, year, age, sex, grade, race4, bmi, qnothhpl, q85, 
-#         q17, q21, q23, q26, q30, q41, q47, q49, q50, q52, q53, q63, q65, q84, q87, q89)
+#  select(sitename, year, age, sex, grade, race4, bmi, qnothhpl, q85, 
+#         q17, q21, q23, q26, q30, q41, q47, q49, q50, q52, q53, q63, q65, q87, q89)
 
 # save the data as a CSV file
 #write.csv(df_n_z, "./data/df_n_z.csv", row.names = FALSE)
@@ -98,8 +102,8 @@ setwd("~/Desktop/CU Spring 2023/master thesis II2/CU_2023_yu")
 # load school district data 
 #df_district = read_sas("./data/sadc_2019_district.sas7bdat") %>% 
 #  janitor::clean_names() %>% 
-#    select(sitename, year, age, sex, grade, race4, bmi, qnothhpl, q85, 
-#        q17, q21, q23, q26, q30, q41, q47, q49, q50, q52, q53, q63, q65, q84, q87, q89)
+#   select(sitename, year, age, sex, grade, race4, bmi, qnothhpl, q85, 
+#        q17, q21, q23, q26, q30, q41, q47, q49, q50, q52, q53, q63, q65, q87, q89)
 
 # save the data as a CSV file
 #write.csv(df_district, "./data/df_district.csv", row.names = FALSE)
@@ -119,7 +123,7 @@ df_district = read_csv("./data/df_district.csv")
 ```
 
 
-## create new variables and data cleaning
+## data cleaning
 ```{r}
 # the state data
 df_fit_state <- 
@@ -162,6 +166,69 @@ summary(df_fit_state)
 ```
 
 
+
+## check variables with 0 variance levels and re-create new variables for un-balanced variables
+```{r}
+# the modification for school district data
+levels(df_fit_district$age)
+levels(df_fit_district$q63)
+levels(df_fit_district$q65)
+
+# drop the level with 0
+df_fit_district = df_fit_district %>% 
+  # Remove levels from the factor column
+  filter(!(age %in% c("1", "2"))) %>% 
+  filter(q63 != 1) %>% 
+  filter(q65 != 1) %>% 
+  mutate(
+  # Remove the unused levels from the factor column
+     age = factor(age),
+     q63 = factor(q63),
+     q65 = factor(q65),
+  # cover q50, q52, q53 to two level variables
+  # 1 = 1, and 2 = the rest of observations
+     q50 = ifelse(q50 == 1, 1, 2),
+     q50 = factor(q50),
+     q52 = ifelse(q52 == 1, 1, 2),
+     q52 = factor(q52),
+     q53 = ifelse(q53 == 1, 1, 2),
+     q53 = factor(q53)
+  ) 
+
+summary(df_fit_district)
+
+
+# the modification for state data
+levels(df_fit_state$age)
+levels(df_fit_state$q63)
+levels(df_fit_state$q65)
+
+# drop the level with 0
+df_fit_state = df_fit_state %>% 
+  # Remove levels from the factor column
+  filter(age != 1) %>% 
+  filter(q63 != 1) %>% 
+  filter(q65 != 1) %>% 
+  mutate(
+  # Remove the unused levels from the factor column
+     age = factor(age),
+     q63 = factor(q63),
+     q65 = factor(q65),
+  # cover q50, q52, q53 to two level variables
+  # 1 = 1, and 2 = the rest of observations
+     q50 = ifelse(q50 == 1, 1, 2),
+     q50 = factor(q50),
+     q52 = ifelse(q52 == 1, 1, 2),
+     q52 = factor(q52),
+     q53 = ifelse(q53 == 1, 1, 2),
+     q53 = factor(q53)
+  ) 
+
+summary(df_fit_state)
+```
+
+
+
 ```{r}
 # Check for missing values
 missing_vals_1 <- is.na(df_fit_district)
@@ -182,7 +249,6 @@ colSums(missing_vals_2)
 ## first try to fit on the whole data, ignore clustered by sitename for now.
 ```{r}
 df_district_lr <- df_fit_district %>%
-  select(-sitename) %>%
   select(-year)
 
 # Fit the model using the cleaned dataset
@@ -279,20 +345,21 @@ models_by_site <- lapply(unique_sites_s, fit_multinom_for_site_s, data = df_fit_
 print(models_by_site)
 ```
 
-# Step 3, fit the data with multinominal logistic regression, random forest, SVM, classfication Tree, Elastic Net, ridge, lasso regression, and classification tree
+# Step 3, fit the data with multinominal logistic regression, random forest, SVM, Elastic Net, ridge, lasso regression, and classification tree
 ## We use the distrcit data as training dataset, and state data as testing data
 
 ```{r}
 df_district_train <- df_fit_district %>%
-  select(-sitename) %>%
   select(-year)
+
+summary(df_district_train)
 ```
 
 ## fit the multinominal logistic regression
 ```{r}
 set.seed(123)
 # 10-fold cross-validation
-ctrl <- trainControl(method = "cv", number = 10)
+ctrl <- trainControl(method = "cv", number = 10, sampling = "up")
 
 # Fit the model using the cleaned dataset
 model_multinom <- train(q85 ~ .,
@@ -326,7 +393,7 @@ multinom_evaluation
 
 # Trying three different values of mtry
 #mtry_vals_rf <- c(ncol(df_district_train)-1, 
- #                 sqrt(ncol(df_district_train)-1), 
+#                 sqrt(ncol(df_district_train)-1), 
 #                  0.5*ncol(df_district_train)-1)
 #mtry_grid_rf<- expand.grid(.mtry = round(mtry_vals_rf))
 
@@ -344,7 +411,7 @@ multinom_evaluation
 #varImp(model_rf)
 ```
 
-ntree give the best results
+## ntree = 200 give the best results
 ```{r}
 # ntree = 200
 set.seed(123)
@@ -437,6 +504,8 @@ model_svc$finalModel
 
 svm_outcome <- predict(model_svc, df_district_train, type = "raw")
 confusionMatrix(svm_outcome, df_district_train$q85)
+
+
 ```
 
 
@@ -549,7 +618,7 @@ confusionMatrix(elastic_net_outcome, df_district_train$q85)
 set.seed(123)
 
 #Using 10-fold cross-validation to train model
-train_control_tree <- trainControl(method = "cv", number = 10, sampling = "down")
+train_control_tree <- trainControl(method = "cv", number = 10, sampling = "up")
 
 #Create sequence of cp parameters to try 
 grid_tree <- expand.grid(cp = seq(0.001, 0.3, by = 0.01))
@@ -646,17 +715,13 @@ postResample(tree_outcome, df_district_train$q85)
 
 # Step 5, Best tuned model applied on testing dataset - the state data
 ```{r}
-# the test dataset
-df_state_test <- df_fit_state %>%
-  select(-sitename) %>%
-  select(-year)
 
 # model random forest
-rf_outcome_test <- predict(model_rf, df_state_test, type = "raw")
-rf_evaluation_test <- confusionMatrix(rf_outcome_test, df_state_test$q85, positive = "1")
+rf_outcome_test <- predict(model_rf, df_district_train, type = "raw")
+rf_evaluation_test <- confusionMatrix(rf_outcome_test, df_district_train$q85, positive = "1")
 rf_evaluation_test
 
-postResample(rf_outcome_test, df_state_test$q85)
+postResample(rf_outcome_test, df_district_train$q85)
 ```
 
 
