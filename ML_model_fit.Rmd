@@ -12,7 +12,7 @@ library(caret)
 library(cluster)
 library(nnet)
 library(broom)
-library(pROC)
+# library(pROC)
 library(rpart.plot)
 ```
 Variable list:
@@ -236,7 +236,6 @@ missing_vals_1 <- is.na(df_fit_district)
 # Count the number of missing values in each column
 colSums(missing_vals_1)
 
-
 # Check for missing values
 missing_vals_2 <- is.na(df_fit_state)
 
@@ -253,7 +252,6 @@ df_district_lr <- df_fit_district %>%
 
 # Fit the model using the cleaned dataset
 model <- multinom(q85 ~ ., data = df_district_lr)
-
 
 summary_model = summary(model)
 
@@ -375,8 +373,6 @@ model_multinom$results
 
 varImp(model_multinom)
 
-
-
 multinom_outcome <- predict(model_multinom, df_district_train, type = "raw")
 
 # Create confusion matrix
@@ -436,7 +432,6 @@ model_rf$bestTune
 model_rf$finalModel
 
 varImp(model_rf)
-
 
 rf_outcome <- predict(model_rf, df_district_train, type = "raw")
 confusionMatrix(rf_outcome, df_district_train$q85)
@@ -504,8 +499,6 @@ model_svc$finalModel
 
 svm_outcome <- predict(model_svc, df_district_train, type = "raw")
 confusionMatrix(svm_outcome, df_district_train$q85)
-
-
 ```
 
 
@@ -535,7 +528,6 @@ plot(model_lasso)
 confusionMatrix(model_lasso)
 
 varImp(model_lasso)
-
 
 lasso_outcome <- predict(model_lasso, df_district_train, type = "raw")
 confusionMatrix(lasso_outcome, df_district_train$q85)
@@ -569,7 +561,6 @@ confusionMatrix(model_ridge)
 
 varImp(model_ridge)
 
-
 ridge_outcome <- predict(model_ridge, df_district_train, type = "raw")
 confusionMatrix(ridge_outcome, df_district_train$q85)
 ```
@@ -601,12 +592,10 @@ model_elastic_net$results
 # Model coefficients
 coef(model_elastic_net$finalModel, model_elastic_net$bestTune$lambda)
 
-
 # visualization and accuracy
 varImp(model_elastic_net)
 plot(varImp(model_elastic_net))
 confusionMatrix(model_elastic_net)
-
 
 elastic_net_outcome <- predict(model_elastic_net, df_district_train, type = "raw")
 confusionMatrix(elastic_net_outcome, df_district_train$q85)
@@ -638,7 +627,6 @@ rpart.plot(model_tree$finalModel)
 
 #Note you can obtain variable importance on the final model within training data
 varImp(model_tree)
-
 
 tree_outcome <- predict(model_tree, df_district_train, type = "raw")
 confusionMatrix(tree_outcome, df_district_train$q85)
