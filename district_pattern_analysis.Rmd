@@ -1,0 +1,997 @@
+---
+title: "district_pattern_analysis"
+author: "Yu He"
+date: "2023-04-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# load libraries
+```{r}
+library(tidyverse)
+library(haven)
+library(caret)
+library(nnet)
+library(broom)
+library(pROC)
+library(rpart.plot)
+```
+
+
+## import the processed data
+```{r}
+# load the processed  state data
+df_part1 = read_csv("./data/df_a_m.csv")
+df_part2 = read_csv("./data/df_n_z.csv")
+
+# merge two state dataset
+df_f_project = bind_rows(df_part1, df_part2)
+
+# load the district dataset
+df_district = read_csv("./data/df_district.csv")
+```
+
+
+## data cleaning
+```{r}
+# the state data
+df_fit_state <- 
+  df_f_project %>% 
+  filter(year == 2019) %>% 
+  mutate(
+  across(c("sex", "age", "grade", "race4", "qnothhpl"), as.factor),
+  year = as.character(year)
+  ) %>% 
+  mutate_at(vars(starts_with("q")), as.factor) %>% 
+  filter(q85 %in% c(1, 2, 3)) %>% 
+  na.omit()
+
+# the school distrcit data
+df_fit_district <- 
+  df_district %>% 
+  filter(year == 2019) %>%
+    mutate(
+  across(c("sex", "age", "grade", "race4", "qnothhpl"), as.factor),
+  year = as.character(year)
+  ) %>% 
+  mutate_at(vars(starts_with("q")), as.factor) %>%
+  filter(q85 %in% c(1, 2, 3)) %>% 
+  na.omit()
+
+df_fit_state %>% 
+  group_by(sitename) %>% 
+  summarize(
+    n_obs = n()
+  )
+
+df_fit_district %>% 
+  group_by(sitename) %>% 
+  summarize(
+    n_obs = n()
+  )
+
+summary(df_fit_district)
+summary(df_fit_state)
+```
+
+
+
+## check variables with 0 variance levels and re-create new variables for un-balanced variables
+```{r}
+# the modification for school district data
+levels(df_fit_district$age)
+levels(df_fit_district$q63)
+levels(df_fit_district$q65)
+
+# drop the level with 0
+df_fit_district = df_fit_district %>% 
+  # Remove levels from the factor column
+  filter(!(age %in% c("1", "2"))) %>% 
+  filter(q63 != 1) %>% 
+  filter(q65 != 1) %>% 
+  mutate(
+  # Remove the unused levels from the factor column
+     age = factor(age),
+     q63 = factor(q63),
+     q65 = factor(q65),
+  # cover q50, q52, q53 to two level variables
+  # 1 = 1, and 2 = the rest of observations
+     q50 = ifelse(q50 == 1, 1, 2),
+     q50 = factor(q50),
+     q52 = ifelse(q52 == 1, 1, 2),
+     q52 = factor(q52),
+     q53 = ifelse(q53 == 1, 1, 2),
+     q53 = factor(q53)
+  ) 
+
+summary(df_fit_district)
+
+
+# the modification for state data
+levels(df_fit_state$age)
+levels(df_fit_state$q63)
+levels(df_fit_state$q65)
+
+# drop the level with 0
+df_fit_state = df_fit_state %>% 
+  # Remove levels from the factor column
+  filter(age != 1) %>% 
+  filter(q63 != 1) %>% 
+  filter(q65 != 1) %>% 
+  mutate(
+  # Remove the unused levels from the factor column
+     age = factor(age),
+     q63 = factor(q63),
+     q65 = factor(q65),
+  # cover q50, q52, q53 to two level variables
+  # 1 = 1, and 2 = the rest of observations
+     q50 = ifelse(q50 == 1, 1, 2),
+     q50 = factor(q50),
+     q52 = ifelse(q52 == 1, 1, 2),
+     q52 = factor(q52),
+     q53 = ifelse(q53 == 1, 1, 2),
+     q53 = factor(q53)
+  ) 
+
+summary(df_fit_state)
+```
+
+
+
+
+```{r}
+df_ft = df_fit_district %>% 
+  filter(sitename == "Broward County, FL (FT)") %>% 
+  select(-sitename, -year)
+
+df_ch = df_fit_district %>% 
+  filter(sitename == "Chicago, IL (CH)") %>% 
+  select(-sitename, -year)
+
+df_ea = df_fit_district %>% 
+  filter(sitename == "Eaton Consortium, MI (EA)") %>% 
+  select(-sitename, -year)
+```
+
+```{r}
+summary(df_ft)
+summary(df_ft$q17)
+summary(df_ch)
+summary(df_ea)
+
+```
+
+# Variable Importance for every Local school districts
+## Broward County, FL (FT)
+```{r}
+df_ft = df_fit_district %>% 
+  filter(sitename == "Broward County, FL (FT)") %>% 
+  select(-sitename, -year)
+
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_lasso <- trainControl(method = "cv", number = 10)
+
+model_lasso = train(q85 ~.,
+                    df_ft, 
+                    method = "glmnet", 
+                    trControl = train_control_lasso, 
+                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+summary(model_lasso)
+model_lasso$bestTune
+model_lasso$results
+
+#Visualize accuracy versus values of C
+plot(model_lasso)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_lasso)
+
+varImp(model_lasso, scale = FALSE)
+plot(varImp(model_lasso))
+
+var_importance = varImp(model_lasso)
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 50) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 50) %>% 
+  select(x2) %>% 
+  arrange(desc(x2))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 50) %>% 
+  select(x3) %>% 
+  arrange(desc(x3))
+
+```
+
+
+## Chicago, IL (CH)
+```{r}
+df_ch = df_fit_district %>% 
+  filter(sitename == "Chicago, IL (CH)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_lasso <- trainControl(method = "cv", number = 10)
+
+model_lasso = train(q85 ~.,
+                    df_ch, 
+                    method = "glmnet", 
+                    trControl = train_control_lasso, 
+                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+summary(model_lasso)
+model_lasso$bestTune
+model_lasso$results
+
+#Visualize accuracy versus values of C
+plot(model_lasso)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_lasso)
+
+varImp(model_lasso)
+plot(varImp(model_lasso))
+
+var_importance = varImp(model_lasso)
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 10) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 10) %>% 
+  select(x2) %>% 
+  arrange(desc(x2))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 10) %>% 
+  select(x3) %>% 
+  arrange(desc(x3))
+```
+
+
+## Eaton Consortium, MI (EA)
+```{r}
+df_ea = df_fit_district %>% 
+  filter(sitename == "Eaton Consortium, MI (EA)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_lasso <- trainControl(method = "cv", number = 10)
+
+model_lasso = train(q85 ~.,
+                    df_ea, 
+                    method = "glmnet", 
+                    trControl = train_control_lasso, 
+                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+summary(model_lasso)
+model_lasso$bestTune
+model_lasso$results
+
+#Visualize accuracy versus values of C
+plot(model_lasso)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_lasso)
+
+varImp(model_lasso, scale = FALSE)
+plot(varImp(model_lasso))
+
+var_importance = varImp(model_lasso)
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 10) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 10) %>% 
+  select(x2) %>% 
+  arrange(desc(x2))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 10) %>% 
+  select(x3) %>% 
+  arrange(desc(x3))
+```
+
+
+## Fort Worth, TX (FW)
+```{r}
+df_fw = df_fit_district %>% 
+  filter(sitename == "Fort Worth, TX (FW)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_lasso <- trainControl(method = "cv", number = 10)
+
+model_lasso = train(q85 ~.,
+                    df_fw, 
+                    method = "glmnet", 
+                    trControl = train_control_lasso, 
+                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+summary(model_lasso)
+model_lasso$bestTune
+model_lasso$results
+
+#Visualize accuracy versus values of C
+plot(model_lasso)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_lasso)
+
+varImp(model_lasso, scale = FALSE)
+plot(varImp(model_lasso))
+
+var_importance = varImp(model_lasso)
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 10) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 10) %>% 
+  select(x2) %>% 
+  arrange(desc(x2))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 10) %>% 
+  select(x3) %>% 
+  arrange(desc(x3))
+```
+
+
+## Genesee Consortium, MI (GE)
+```{r}
+df_ge = df_fit_district %>% 
+  filter(sitename == "Genesee Consortium, MI (GE)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_lasso <- trainControl(method = "cv", number = 10)
+
+model_lasso = train(q85 ~.,
+                    df_ge, 
+                    method = "glmnet", 
+                    trControl = train_control_lasso, 
+                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+summary(model_lasso)
+model_lasso$bestTune
+model_lasso$results
+
+#Visualize accuracy versus values of C
+plot(model_lasso)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_lasso)
+
+varImp(model_lasso)
+plot(varImp(model_lasso))
+
+var_importance = varImp(model_lasso)
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 10) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 10) %>% 
+  select(x2) %>% 
+  arrange(desc(x2))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 10) %>% 
+  select(x3) %>% 
+  arrange(desc(x3))
+```
+
+
+## Hillsborough County, FL (HL)
+```{r}
+df_hl = df_fit_district %>% 
+  filter(sitename == "Hillsborough County, FL (HL)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_lasso <- trainControl(method = "cv", number = 10)
+
+model_lasso = train(q85 ~.,
+                    df_hl, 
+                    method = "glmnet", 
+                    trControl = train_control_lasso, 
+                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+summary(model_lasso)
+model_lasso$bestTune
+model_lasso$results
+
+#Visualize accuracy versus values of C
+plot(model_lasso)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_lasso)
+
+varImp(model_lasso, scale = FALSE)
+plot(varImp(model_lasso))
+
+var_importance = varImp(model_lasso)
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 50) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 50) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 50) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+```
+
+
+## Los Angeles, CA (LO)
+```{r}
+df_lo = df_fit_district %>% 
+  filter(sitename == "Los Angeles, CA (LO)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_lasso <- trainControl(method = "cv", number = 10)
+
+model_lasso = train(q85 ~.,
+                    df_lo, 
+                    method = "glmnet", 
+                    trControl = train_control_lasso, 
+                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+summary(model_lasso)
+model_lasso$bestTune
+model_lasso$results
+
+#Visualize accuracy versus values of C
+plot(model_lasso)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_lasso)
+
+varImp(model_lasso, scale = FALSE)
+plot(varImp(model_lasso))
+
+var_importance = varImp(model_lasso)
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 50) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 50) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 50) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+```
+
+
+## Newark, NJ (NW)
+```{r}
+df_nw = df_fit_district %>% 
+  filter(sitename == "Newark, NJ (NW)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_lasso <- trainControl(method = "cv", number = 10)
+
+model_lasso = train(q85 ~.,
+                    df_nw, 
+                    method = "glmnet", 
+                    trControl = train_control_lasso, 
+                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+summary(model_lasso)
+model_lasso$bestTune
+model_lasso$results
+
+#Visualize accuracy versus values of C
+plot(model_lasso)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_lasso)
+
+varImp(model_lasso)
+plot(varImp(model_lasso))
+
+var_importance = varImp(model_lasso)
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 10) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 10) %>% 
+  select(x2) %>% 
+  arrange(desc(x2))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 10) %>% 
+  select(x3) %>% 
+  arrange(desc(x3))
+```
+
+
+## Orange County, FL (OL)
+```{r}
+df_ol = df_fit_district %>% 
+  filter(sitename == "Orange County, FL (OL)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_lasso <- trainControl(method = "cv", number = 10)
+
+model_lasso = train(q85 ~.,
+                    df_ol, 
+                    method = "glmnet", 
+                    trControl = train_control_lasso, 
+                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+summary(model_lasso)
+model_lasso$bestTune
+model_lasso$results
+
+#Visualize accuracy versus values of C
+plot(model_lasso)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_lasso)
+
+varImp(model_lasso)
+plot(varImp(model_lasso))
+
+var_importance = varImp(model_lasso)
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 10) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 10) %>% 
+  select(x2) %>% 
+  arrange(desc(x2))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 10) %>% 
+  select(x3) %>% 
+  arrange(desc(x3))
+```
+
+
+## Palm Beach County, FL (PB)
+```{r}
+df_ol = df_fit_district %>% 
+  filter(sitename == "Palm Beach County, FL (PB)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_lasso <- trainControl(method = "cv", number = 10)
+
+model_lasso = train(q85 ~.,
+                    df_ol, 
+                    method = "glmnet", 
+                    trControl = train_control_lasso, 
+                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+summary(model_lasso)
+model_lasso$bestTune
+model_lasso$results
+
+#Visualize accuracy versus values of C
+plot(model_lasso)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_lasso)
+
+varImp(model_lasso)
+plot(varImp(model_lasso))
+
+var_importance = varImp(model_lasso)
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 10) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 10) %>% 
+  select(x2) %>% 
+  arrange(desc(x2))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 10) %>% 
+  select(x3) %>% 
+  arrange(desc(x3))
+```
+
+
+## Pasco County, FL (PS)
+```{r}
+df_ps = df_fit_district %>% 
+  filter(sitename == "Pasco County, FL (PS)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_lasso <- trainControl(method = "cv", number = 10)
+
+model_lasso = train(q85 ~.,
+                    df_ps, 
+                    method = "glmnet", 
+                    trControl = train_control_lasso, 
+                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+summary(model_lasso)
+model_lasso$bestTune
+model_lasso$results
+
+#Visualize accuracy versus values of C
+plot(model_lasso)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_lasso)
+
+varImp(model_lasso)
+plot(varImp(model_lasso))
+
+var_importance = varImp(model_lasso)
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 10) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 10) %>% 
+  select(x2) %>% 
+  arrange(desc(x2))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 10) %>% 
+  select(x3) %>% 
+  arrange(desc(x3))
+```
+
+
+## Philadelphia, PA (PH)
+```{r}
+df_ph = df_fit_district %>% 
+  filter(sitename == "Philadelphia, PA (PH)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_lasso <- trainControl(method = "cv", number = 10)
+
+model_lasso = train(q85 ~.,
+                    df_ph, 
+                    method = "glmnet", 
+                    trControl = train_control_lasso, 
+                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+summary(model_lasso)
+model_lasso$bestTune
+model_lasso$results
+
+#Visualize accuracy versus values of C
+plot(model_lasso)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_lasso)
+
+varImp(model_lasso, scale = FALSE)
+plot(varImp(model_lasso))
+
+var_importance = varImp(model_lasso)
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 10) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 10) %>% 
+  select(x2) %>% 
+  arrange(desc(x2))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 10) %>% 
+  select(x3) %>% 
+  arrange(desc(x3))
+```
+
+
+## Portland, OR (PO)
+```{r}
+df_po = df_fit_district %>% 
+  filter(sitename == "Portland, OR (PO)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_lasso <- trainControl(method = "cv", number = 10)
+
+model_lasso = train(q85 ~.,
+                    df_po, 
+                    method = "glmnet", 
+                    trControl = train_control_lasso, 
+                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+summary(model_lasso)
+model_lasso$bestTune
+model_lasso$results
+
+#Visualize accuracy versus values of C
+plot(model_lasso)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_lasso)
+
+varImp(model_lasso)
+plot(varImp(model_lasso))
+
+var_importance = varImp(model_lasso)
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 10) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 10) %>% 
+  select(x2) %>% 
+  arrange(desc(x2))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 10) %>% 
+  select(x3) %>% 
+  arrange(desc(x3))
+```
+
+
+## San Francisco, CA (SF)
+```{r}
+df_sf = df_fit_district %>% 
+  filter(sitename == "San Francisco, CA (SF)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_lasso <- trainControl(method = "cv", number = 10)
+
+model_lasso = train(q85 ~.,
+                    df_sf, 
+                    method = "glmnet", 
+                    trControl = train_control_lasso, 
+                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+summary(model_lasso)
+model_lasso$bestTune
+model_lasso$results
+
+#Visualize accuracy versus values of C
+plot(model_lasso)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_lasso)
+
+varImp(model_lasso)
+plot(varImp(model_lasso))
+
+var_importance = varImp(model_lasso)
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 10) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 10) %>% 
+  select(x2) %>% 
+  arrange(desc(x2))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 10) %>% 
+  select(x3) %>% 
+  arrange(desc(x3))
+```
+
+
+## Shelby County, TN (ST)
+```{r}
+df_sf = df_fit_district %>% 
+  filter(sitename == "Shelby County, TN (ST)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_lasso <- trainControl(method = "cv", number = 10)
+
+model_lasso = train(q85 ~.,
+                    df_sf, 
+                    method = "glmnet", 
+                    trControl = train_control_lasso, 
+                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
+
+summary(model_lasso)
+model_lasso$bestTune
+model_lasso$results
+
+#Visualize accuracy versus values of C
+plot(model_lasso)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_lasso)
+
+varImp(model_lasso)
+plot(varImp(model_lasso))
+
+var_importance = varImp(model_lasso)
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 10) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 10) %>% 
+  select(x2) %>% 
+  arrange(desc(x2))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 10) %>% 
+  select(x3) %>% 
+  arrange(desc(x3))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

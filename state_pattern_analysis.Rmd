@@ -1,0 +1,660 @@
+---
+title: "state_pattern_analysis"
+author: "Yu He"
+date: "2023-04-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# load libraries
+```{r}
+library(tidyverse)
+library(haven)
+library(caret)
+library(nnet)
+library(broom)
+library(pROC)
+library(rpart.plot)
+```
+
+
+## import the processed data
+```{r}
+# load the processed  state data
+df_part1 = read_csv("./data/df_a_m.csv")
+df_part2 = read_csv("./data/df_n_z.csv")
+
+# merge two state dataset
+df_f_project = bind_rows(df_part1, df_part2)
+
+# load the district dataset
+df_district = read_csv("./data/df_district.csv")
+```
+
+
+## data cleaning
+```{r}
+# the state data
+df_fit_state <- 
+  df_f_project %>% 
+  filter(year == 2019) %>% 
+  mutate(
+  across(c("sex", "age", "grade", "race4", "qnothhpl"), as.factor),
+  year = as.character(year)
+  ) %>% 
+  mutate_at(vars(starts_with("q")), as.factor) %>% 
+  filter(q85 %in% c(1, 2, 3)) %>% 
+  na.omit()
+
+# the school distrcit data
+df_fit_district <- 
+  df_district %>% 
+  filter(year == 2019) %>%
+    mutate(
+  across(c("sex", "age", "grade", "race4", "qnothhpl"), as.factor),
+  year = as.character(year)
+  ) %>% 
+  mutate_at(vars(starts_with("q")), as.factor) %>%
+  filter(q85 %in% c(1, 2, 3)) %>% 
+  na.omit()
+
+df_fit_state %>% 
+  group_by(sitename) %>% 
+  summarize(
+    n_obs = n()
+  )
+
+df_fit_district %>% 
+  group_by(sitename) %>% 
+  summarize(
+    n_obs = n()
+  )
+
+summary(df_fit_district)
+summary(df_fit_state)
+```
+
+
+
+## check variables with 0 variance levels and re-create new variables for un-balanced variables
+```{r}
+# the modification for school district data
+levels(df_fit_district$age)
+levels(df_fit_district$q63)
+levels(df_fit_district$q65)
+
+# drop the level with 0
+df_fit_district = df_fit_district %>% 
+  # Remove levels from the factor column
+  filter(!(age %in% c("1", "2"))) %>% 
+  filter(q63 != 1) %>% 
+  filter(q65 != 1) %>% 
+  mutate(
+  # Remove the unused levels from the factor column
+     age = factor(age),
+     q63 = factor(q63),
+     q65 = factor(q65),
+  # cover q50, q52, q53 to two level variables
+  # 1 = 1, and 2 = the rest of observations
+     q50 = ifelse(q50 == 1, 1, 2),
+     q50 = factor(q50),
+     q52 = ifelse(q52 == 1, 1, 2),
+     q52 = factor(q52),
+     q53 = ifelse(q53 == 1, 1, 2),
+     q53 = factor(q53)
+  ) 
+
+summary(df_fit_district)
+
+
+# the modification for state data
+levels(df_fit_state$age)
+levels(df_fit_state$q63)
+levels(df_fit_state$q65)
+
+# drop the level with 0
+df_fit_state = df_fit_state %>% 
+  # Remove levels from the factor column
+  filter(age != 1) %>% 
+  filter(q63 != 1) %>% 
+  filter(q65 != 1) %>% 
+  mutate(
+  # Remove the unused levels from the factor column
+     age = factor(age),
+     q63 = factor(q63),
+     q65 = factor(q65),
+  # cover q50, q52, q53 to two level variables
+  # 1 = 1, and 2 = the rest of observations
+     q50 = ifelse(q50 == 1, 1, 2),
+     q50 = factor(q50),
+     q52 = ifelse(q52 == 1, 1, 2),
+     q52 = factor(q52),
+     q53 = ifelse(q53 == 1, 1, 2),
+     q53 = factor(q53)
+  ) 
+
+summary(df_fit_state)
+```
+
+
+# Variable Importance for every State
+## Alabama (AL)
+```{r}
+df_al = df_fit_state %>% 
+  filter(sitename == "Alabama (AL)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_ridge <- trainControl(method = "cv", number = 10)
+
+model_ridge = train(q85 ~.,
+                    df_al, 
+                    method = "glmnet", 
+                    trControl = train_control_ridge, 
+                    tuneGrid = expand.grid(alpha = 0, lambda = lambda))
+
+summary(model_ridge)
+model_ridge$bestTune
+model_ridge$results
+
+#Visualize accuracy versus values of C
+plot(model_ridge)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_ridge)
+
+varImp(model_ridge)
+plot(varImp(model_ridge))
+
+var_import = varImp(model_ridge)$importance
+```
+
+
+## Arkansas (AR)
+```{r}
+df_ar = df_fit_state %>% 
+  filter(sitename == "Arkansas (AR)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_ridge <- trainControl(method = "cv", number = 10)
+
+model_ridge = train(q85 ~.,
+                    df_ar, 
+                    method = "glmnet", 
+                    trControl = train_control_ridge, 
+                    tuneGrid = expand.grid(alpha = 0, lambda = lambda))
+
+summary(model_ridge)
+model_ridge$bestTune
+model_ridge$results
+
+#Visualize accuracy versus values of C
+plot(model_ridge)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_ridge)
+
+varImp(model_ridge)
+plot(varImp(model_ridge))
+
+var_import = varImp(model_ridge)$importance
+```
+
+
+## Illinois (IL)
+```{r}
+df_il = df_fit_state %>% 
+  filter(sitename == "Illinois (IL)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_ridge <- trainControl(method = "cv", number = 10)
+
+model_ridge = train(q85 ~.,
+                    df_il , 
+                    method = "glmnet", 
+                    trControl = train_control_ridge, 
+                    tuneGrid = expand.grid(alpha = 0, lambda = lambda))
+
+summary(model_ridge)
+model_ridge$bestTune
+model_ridge$results
+
+#Visualize accuracy versus values of C
+plot(model_ridge)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_ridge)
+
+varImp(model_ridge)
+plot(varImp(model_ridge))
+
+var_import = varImp(model_ridge)$importance
+```
+
+
+## Iowa (IA)
+```{r}
+df_ia = df_fit_state %>% 
+  filter(sitename == "Iowa (IA)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_ridge <- trainControl(method = "cv", number = 10)
+
+model_ridge = train(q85 ~.,
+                    df_ia, 
+                    method = "glmnet", 
+                    trControl = train_control_ridge, 
+                    tuneGrid = expand.grid(alpha = 0, lambda = lambda))
+
+summary(model_ridge)
+model_ridge$bestTune
+model_ridge$results
+
+#Visualize accuracy versus values of C
+plot(model_ridge)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_ridge)
+
+varImp(model_ridge)
+plot(varImp(model_ridge))
+
+var_import = varImp(model_ridge)$importance
+```
+
+
+## Kentucky (KY)
+```{r}
+df_ky = df_fit_state %>% 
+  filter(sitename == "Kentucky (KY)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_ridge <- trainControl(method = "cv", number = 10)
+
+model_ridge = train(q85 ~.,
+                    df_ky, 
+                    method = "glmnet", 
+                    trControl = train_control_ridge, 
+                    tuneGrid = expand.grid(alpha = 0, lambda = lambda))
+
+summary(model_ridge)
+model_ridge$bestTune
+model_ridge$results
+
+#Visualize accuracy versus values of C
+plot(model_ridge)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_ridge)
+
+varImp(model_ridge)
+plot(varImp(model_ridge))
+
+var_import = varImp(model_ridge)$importance
+```
+
+
+## Michigan (MI)
+```{r}
+df_mi = df_fit_state %>% 
+  filter(sitename == "Michigan (MI)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_ridge <- trainControl(method = "cv", number = 10)
+
+model_ridge = train(q85 ~.,
+                    df_mi , 
+                    method = "glmnet", 
+                    trControl = train_control_ridge, 
+                    tuneGrid = expand.grid(alpha = 0, lambda = lambda))
+
+summary(model_ridge)
+model_ridge$bestTune
+model_ridge$results
+
+#Visualize accuracy versus values of C
+plot(model_ridge)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_ridge)
+
+varImp(model_ridge)
+plot(varImp(model_ridge))
+
+var_import = varImp(model_ridge)$importance
+```
+
+
+## Mississippi (MS)
+```{r}
+df_ms = df_fit_state %>% 
+  filter(sitename == "Mississippi (MS)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_ridge <- trainControl(method = "cv", number = 10)
+
+model_ridge = train(q85 ~.,
+                    df_ms, 
+                    method = "glmnet", 
+                    trControl = train_control_ridge, 
+                    tuneGrid = expand.grid(alpha = 0, lambda = lambda))
+
+summary(model_ridge)
+model_ridge$bestTune
+model_ridge$results
+
+#Visualize accuracy versus values of C
+plot(model_ridge)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_ridge)
+
+varImp(model_ridge)
+plot(varImp(model_ridge))
+
+var_import = varImp(model_ridge)$importance
+```
+
+
+## Nebraska (NE)
+```{r}
+df_ne = df_fit_state %>% 
+  filter(sitename == "Nebraska (NE)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_ridge <- trainControl(method = "cv", number = 10)
+
+model_ridge = train(q85 ~.,
+                    df_ne, 
+                    method = "glmnet", 
+                    trControl = train_control_ridge, 
+                    tuneGrid = expand.grid(alpha = 0, lambda = lambda))
+
+summary(model_ridge)
+model_ridge$bestTune
+model_ridge$results
+
+#Visualize accuracy versus values of C
+plot(model_ridge)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_ridge)
+
+varImp(model_ridge)
+plot(varImp(model_ridge))
+
+var_import = varImp(model_ridge)$importance
+```
+
+
+## Oklahoma (OK)
+```{r}
+df_ok = df_fit_state %>% 
+  filter(sitename == "Oklahoma (OK)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_ridge <- trainControl(method = "cv", number = 10)
+
+model_ridge = train(q85 ~.,
+                    df_ok, 
+                    method = "glmnet", 
+                    trControl = train_control_ridge, 
+                    tuneGrid = expand.grid(alpha = 0, lambda = lambda))
+
+summary(model_ridge)
+model_ridge$bestTune
+model_ridge$results
+
+#Visualize accuracy versus values of C
+plot(model_ridge)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_ridge)
+
+varImp(model_ridge)
+plot(varImp(model_ridge))
+
+var_import = varImp(model_ridge)$importance
+```
+
+
+## Pennsylvania (PA)
+```{r}
+df_pa = df_fit_state %>% 
+  filter(sitename == "Pennsylvania (PA)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_ridge <- trainControl(method = "cv", number = 10)
+
+model_ridge = train(q85 ~.,
+                    df_pa, 
+                    method = "glmnet", 
+                    trControl = train_control_ridge, 
+                    tuneGrid = expand.grid(alpha = 0, lambda = lambda))
+
+summary(model_ridge)
+model_ridge$bestTune
+model_ridge$results
+
+#Visualize accuracy versus values of C
+plot(model_ridge)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_ridge)
+
+varImp(model_ridge)
+plot(varImp(model_ridge))
+
+var_importance <- varImp(model_ridge)
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 50) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 50) %>% 
+  select(x2) %>% 
+  arrange(desc(x2))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 50) %>% 
+  select(x3) %>% 
+  arrange(desc(x3))
+```
+
+
+## South Carolina (SC)
+```{r}
+df_sc = df_fit_state %>% 
+  filter(sitename == "South Carolina (SC)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_ridge <- trainControl(method = "cv", number = 10)
+
+model_ridge = train(q85 ~.,
+                    df_sc, 
+                    method = "glmnet", 
+                    trControl = train_control_ridge, 
+                    tuneGrid = expand.grid(alpha = 0, lambda = lambda))
+
+summary(model_ridge)
+model_ridge$bestTune
+model_ridge$results
+
+#Visualize accuracy versus values of C
+plot(model_ridge)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_ridge)
+
+varImp(model_ridge)
+plot(varImp(model_ridge))
+
+var_importance <- varImp(model_ridge)
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 50) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 50) %>% 
+  select(x2) %>% 
+  arrange(desc(x2))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 50) %>% 
+  select(x3) %>% 
+  arrange(desc(x3))
+```
+
+
+## West Virginia (WV)
+```{r}
+df_wv = df_fit_state %>% 
+  filter(sitename == "West Virginia (WV)") %>% 
+  select(-sitename, -year)
+
+
+set.seed(123)
+#Create grid to search lambda
+lambda <- 10^seq(-3,3, length = 100)
+
+# Specify training control
+train_control_ridge <- trainControl(method = "cv", number = 10)
+
+model_ridge = train(q85 ~.,
+                    df_wv, 
+                    method = "glmnet", 
+                    trControl = train_control_ridge, 
+                    tuneGrid = expand.grid(alpha = 0, lambda = lambda))
+
+summary(model_ridge)
+model_ridge$bestTune
+model_ridge$results
+
+#Visualize accuracy versus values of C
+plot(model_ridge)
+
+#Obtain metrics of accuracy from training
+confusionMatrix(model_ridge)
+
+varImp(model_ridge)
+plot(varImp(model_ridge))
+
+var_importance <- varImp(model_ridge)
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x1 > 50) %>% 
+  select(x1) %>% 
+  arrange(desc(x1))
+
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x2 > 50) %>% 
+  select(x2) %>% 
+  arrange(desc(x2))
+  
+var_importance$importance %>% 
+  janitor::clean_names() %>% 
+  filter(x3 > 50) %>% 
+  select(x3) %>% 
+  arrange(desc(x3))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
