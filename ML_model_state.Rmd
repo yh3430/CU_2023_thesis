@@ -752,107 +752,53 @@ for (sitename in unique_sitenames) {
     "VariableImportance" = variable_importance
   )
 }
-
-# Print the results
-print(results)
 ```
 
-## use ridge regression method
+## save the random forest results into an excel file
 ```{r}
-set.seed(123)
+# Extract all VariableImportance data frames
+variable_importance_dfs <- lapply(results, function(x) x$VariableImportance)
 
-# Create grid to search lambda
-lambda <- 10^seq(-3, 3, length = 100)
+# Combine them into a single data frame using rbind
+combined_df <- do.call(rbind, variable_importance_dfs)
 
-# Specify training control
-train_control_ridge <- trainControl(method = "cv", number = 10)
+# Reset the row names to create an index column
+combined_df <- combined_df %>% rownames_to_column(var = "Index")
 
-# Get unique values of sitename
-unique_sitenames <- unique(df_state_train$sitename)
+# Separate the Index column into two columns: Location and Variable
+combined_df <- combined_df %>% separate(Index, into = c("Location", "Variable"), sep = "\\.")
 
-# Initialize a list to store the results for each sitename
-results <- list()
+# View the resulting data frame
+print(combined_df)
 
-# Run the analysis for each sitename
-for (sitename in unique_sitenames) {
-  # Subset the data for the current sitename
-  df_train_sitename <- df_state_train[df_state_train$sitename == sitename, ]
-  
-  # Remove the 'sitename' column from the dataframe
-  df_train_sitename <- df_train_sitename %>% select(-sitename)
-  
-  # Train Ridge Regression model
-  model_ridge <- train(q85 ~ .,
-                       df_train_sitename,
-                       method = "glmnet",
-                       trControl = train_control_ridge,
-                       tuneGrid = expand.grid(alpha = 0, lambda = lambda))
-  
-  # Make predictions on the training dataset
-  ridge_outcome <- predict(model_ridge, df_train_sitename, type = "raw")
-  
-  # Obtain metrics of accuracy from training
-  cm_ridge <- confusionMatrix(ridge_outcome, df_train_sitename$q85)
-  
-  # Variable importance
-  ridge_varImp <- varImp(model_ridge)
-  
-  # Store the results for the current sitename in the results list
-  results[[sitename]] <- list(
-    "BestTune" = model_ridge$bestTune,
-    "Results" = model_ridge$results,
-    "ConfusionMatrix" = cm_ridge,
-    "VariableImportance" = ridge_varImp
-  )
+
+```
+
+```{r}
+# Install and load openxlsx package if you haven't already
+if (!requireNamespace("openxlsx", quietly = TRUE)) {
+  install.packages("openxlsx")
+}
+library(openxlsx)
+
+# Create a new Excel workbook
+wb <- createWorkbook()
+
+# Assuming combined_df is your data frame
+# Split the data frame by Location
+dfs_by_location <- split(combined_df, combined_df$Location)
+
+# Write each subset to a separate sheet in the Excel workbook
+for (location in names(dfs_by_location)) {
+  df <- dfs_by_location[[location]]
+  addWorksheet(wb, location)
+  writeData(wb, location, df)
 }
 
-# Print the results
-print(results)
-
+# Save the Excel workbook
+saveWorkbook(wb, "random_forest_each_state.xlsx", overwrite = TRUE)
 
 ```
-
-
-```{r}
-df_state_train
-```
-
-```{r}
-df_al = df_state_train %>% 
-  filter(sitename == "Alabama (AL)") %>% 
-  select(-sitename)
-
-
-set.seed(123)
-#Create grid to search lambda
-lambda <- 10^seq(-3,3, length = 100)
-
-# Specify training control
-train_control_ridge <- trainControl(method = "cv", number = 10)
-
-model_ridge = train(q85 ~.,
-                    df_al, 
-                    method = "glmnet", 
-                    trControl = train_control_ridge, 
-                    tuneGrid = expand.grid(alpha = 0, lambda = lambda))
-
-summary(model_ridge)
-model_ridge$bestTune
-model_ridge$results
-
-#Visualize accuracy versus values of C
-plot(model_ridge)
-
-#Obtain metrics of accuracy from training
-confusionMatrix(model_ridge)
-
-varImp(model_ridge)
-
-ridge_outcome <- predict(model_ridge, df_state_train, type = "raw")
-confusionMatrix(ridge_outcome, df_state_train$q85)
-```
-
-
 
 
 

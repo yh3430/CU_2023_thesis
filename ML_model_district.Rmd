@@ -432,7 +432,9 @@ model_rf$results
 model_rf$bestTune
 model_rf$finalModel
 
-varImp(model_rf)
+var_imp = varImp(model_rf)
+
+var_imp$importance %>% arrange(desc(Overall))
 
 rf_outcome <- predict(model_rf, df_district_train, type = "raw")
 confusionMatrix(rf_outcome, df_district_train$q85)
@@ -739,7 +741,7 @@ for (sitename in unique_sitenames) {
   performance_metrics <- postResample(rf_outcome_test, df_train_sitename$q85)
   
   # Get variable importance
-  variable_importance <- varImp(model_rf) 
+  variable_importance <- varImp(model_rf)
   
   # Store the results for the current sitname in the results list
   results[[sitename]] <- list(
@@ -748,104 +750,55 @@ for (sitename in unique_sitenames) {
     "VariableImportance" = variable_importance
   )
 }
-
-# Print the results
-print(results)
-
-
- # Remove the 'sitename' column from the dataframe
-  df_train_sitename <- df_train_sitename %>% select(-sitename)
 ```
 
-
-## use lasso regression method
+## save the random forest results into an excel file
 ```{r}
-# Get unique values of sitname
-unique_sitenames <- unique(df_district_train$sitename)
+# Extract all VariableImportance data frames
+variable_importance_dfs <- lapply(results, function(x) x$VariableImportance)
 
-# Initialize a list to store the results for each sitename
-results <- list()
+# Combine them into a single data frame using rbind
+combined_df <- do.call(rbind, variable_importance_dfs)
 
-# Run the analysis for each sitname
-for (sitename in unique_sitenames) {
-  # Subset the data for the current sitname
-  df_train_sitename <- df_district_train[df_district_train$sitename == sitename, ]
-  
-  # Remove the 'sitename' column from the dataframe
-  df_train_sitename <- df_train_sitename %>% select(-sitename)
-  
-  #Create grid to search lambda
-  lambda <- 10^seq(-3,3, length = 100)
+# Reset the row names to create an index column
+combined_df <- combined_df %>% rownames_to_column(var = "Index")
 
-  # Specify training control
-  train_control_lasso <- trainControl(method = "cv", number = 10)
+# Separate the Index column into two columns: Location and Variable
+combined_df <- combined_df %>% separate(Index, into = c("Location", "Variable"), sep = "\\.")
 
-  model_lasso = train(q85 ~.,
-                    df_train_sitename, 
-                    method = "glmnet", 
-                    trControl = train_control_lasso, 
-                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
-  
-  # Make predictions on the test dataset
-  lasso_outcome_test <- predict(model_lasso, df_train_sitename, type = "raw")
-  
-  # Evaluate the model using the confusionMatrix function
-  lasso_evaluation_test <- confusionMatrix(lasso_outcome_test,  df_train_sitename$q85, positive = "1")
-  
-  # Calculate performance metrics using the postResample function
-  performance_metrics <- postResample(lasso_outcome_test, df_train_sitename$q85)
-  
-  # Get variable importance
-  variable_importance <- varImp(model_lasso)
-  
-  # Store the results for the current sitname in the results list
-  results[[sitename]] <- list(
-    "ConfusionMatrix" = lasso_evaluation_test,
-    "PerformanceMetrics" = performance_metrics,
-    "VariableImportance" = variable_importance
-  )
+# View the resulting data frame
+print(combined_df)
+
+
+```
+
+```{r}
+# Install and load openxlsx package if you haven't already
+if (!requireNamespace("openxlsx", quietly = TRUE)) {
+  install.packages("openxlsx")
+}
+library(openxlsx)
+
+# Create a new Excel workbook
+wb <- createWorkbook()
+
+# Assuming combined_df is your data frame
+# Split the data frame by Location
+dfs_by_location <- split(combined_df, combined_df$Location)
+
+# Write each subset to a separate sheet in the Excel workbook
+for (location in names(dfs_by_location)) {
+  df <- dfs_by_location[[location]]
+  addWorksheet(wb, location)
+  writeData(wb, location, df)
 }
 
-# Print the results
-print(results)
+# Save the Excel workbook
+saveWorkbook(wb, "random_forest_each_district.xlsx", overwrite = TRUE)
 
 ```
 
 
-```{r}
-df_st = df_district_train %>% 
-  filter(sitename == "Shelby County, TN (ST)") %>% 
-  select(-sitename)
-
-
-set.seed(123)
-#Create grid to search lambda
-lambda <- 10^seq(-3,3, length = 100)
-
-# Specify training control
-train_control_lasso <- trainControl(method = "cv", number = 10)
-
-model_lasso = train(q85 ~.,
-                    df_st, 
-                    method = "glmnet", 
-                    trControl = train_control_lasso, 
-                    tuneGrid = expand.grid(alpha = 1, lambda = lambda))
-
-summary(model_lasso)
-model_lasso$bestTune
-model_lasso$results
-
-#Visualize accuracy versus values of C
-plot(model_lasso)
-
-#Obtain metrics of accuracy from training
-confusionMatrix(model_lasso)
-
-varImp(model_lasso)
-
-lasso_outcome <- predict(model_lasso, df_st, type = "raw")
-confusionMatrix(lasso_outcome, df_st$q85)
-```
 
 
 
