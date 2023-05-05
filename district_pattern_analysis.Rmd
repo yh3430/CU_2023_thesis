@@ -218,6 +218,7 @@ var_importance$importance %>%
   select(x3) %>% 
   arrange(desc(x3))
 
+var_import = varImp(model_lasso, scale = FALSE)$importance
 ```
 
 
@@ -272,6 +273,8 @@ var_importance$importance %>%
   filter(x3 > 10) %>% 
   select(x3) %>% 
   arrange(desc(x3))
+
+var_import = varImp(model_lasso)$importance
 ```
 
 
@@ -326,6 +329,8 @@ var_importance$importance %>%
   filter(x3 > 10) %>% 
   select(x3) %>% 
   arrange(desc(x3))
+
+var_import = varImp(model_lasso, scale = FALSE)$importance
 ```
 
 
@@ -380,6 +385,8 @@ var_importance$importance %>%
   filter(x3 > 10) %>% 
   select(x3) %>% 
   arrange(desc(x3))
+
+var_import = varImp(model_lasso, scale = FALSE)$importance
 ```
 
 
@@ -434,6 +441,8 @@ var_importance$importance %>%
   filter(x3 > 10) %>% 
   select(x3) %>% 
   arrange(desc(x3))
+
+var_import = varImp(model_lasso)$importance
 ```
 
 
@@ -480,14 +489,16 @@ var_importance$importance %>%
 var_importance$importance %>% 
   janitor::clean_names() %>% 
   filter(x2 > 50) %>% 
-  select(x1) %>% 
-  arrange(desc(x1))
+  select(x2) %>% 
+  arrange(desc(x2))
   
 var_importance$importance %>% 
   janitor::clean_names() %>% 
   filter(x3 > 50) %>% 
-  select(x1) %>% 
-  arrange(desc(x1))
+  select(x3) %>% 
+  arrange(desc(x3))
+
+var_import = varImp(model_lasso, scale = FALSE)$importance
 ```
 
 
@@ -534,14 +545,16 @@ var_importance$importance %>%
 var_importance$importance %>% 
   janitor::clean_names() %>% 
   filter(x2 > 50) %>% 
-  select(x1) %>% 
-  arrange(desc(x1))
+  select(x2) %>% 
+  arrange(desc(x2))
   
 var_importance$importance %>% 
   janitor::clean_names() %>% 
   filter(x3 > 50) %>% 
-  select(x1) %>% 
-  arrange(desc(x1))
+  select(x3) %>% 
+  arrange(desc(x3))
+
+var_import = varImp(model_lasso, scale = FALSE)$importance
 ```
 
 
@@ -596,6 +609,8 @@ var_importance$importance %>%
   filter(x3 > 10) %>% 
   select(x3) %>% 
   arrange(desc(x3))
+
+var_import = varImp(model_lasso)$importance
 ```
 
 
@@ -650,6 +665,9 @@ var_importance$importance %>%
   filter(x3 > 10) %>% 
   select(x3) %>% 
   arrange(desc(x3))
+
+
+var_import = varImp(model_lasso)$importance
 ```
 
 
@@ -704,6 +722,8 @@ var_importance$importance %>%
   filter(x3 > 10) %>% 
   select(x3) %>% 
   arrange(desc(x3))
+
+var_import = varImp(model_lasso)$importance
 ```
 
 
@@ -758,6 +778,8 @@ var_importance$importance %>%
   filter(x3 > 10) %>% 
   select(x3) %>% 
   arrange(desc(x3))
+
+var_import = varImp(model_lasso)$importance
 ```
 
 
@@ -812,6 +834,8 @@ var_importance$importance %>%
   filter(x3 > 10) %>% 
   select(x3) %>% 
   arrange(desc(x3))
+
+var_import = varImp(model_lasso, scale = FALSE)$importance
 ```
 
 
@@ -866,6 +890,9 @@ var_importance$importance %>%
   filter(x3 > 10) %>% 
   select(x3) %>% 
   arrange(desc(x3))
+
+
+var_import = varImp(model_lasso)$importance
 ```
 
 
@@ -920,6 +947,8 @@ var_importance$importance %>%
   filter(x3 > 10) %>% 
   select(x3) %>% 
   arrange(desc(x3))
+
+var_import = varImp(model_lasso)$importance
 ```
 
 
@@ -974,6 +1003,9 @@ var_importance$importance %>%
   filter(x3 > 10) %>% 
   select(x3) %>% 
   arrange(desc(x3))
+
+
+var_import = varImp(model_lasso)$importance
 ```
 
 

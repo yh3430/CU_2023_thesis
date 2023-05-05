@@ -2634,32 +2634,82 @@ confusionMatrix(model_rf)</code></pre>
 ## 1 1750   96    3  0.05354246
 ## 2  236 1601   12  0.13412655
 ## 3    0    0 1849  0.00000000</code></pre>
-<pre class="r"><code>varImp(model_rf)</code></pre>
-<pre><code>## rf variable importance
-## 
-##   only 20 most important variables shown (out of 72)
-## 
-##                               Overall
-## bmi                           100.000
-## q302                           15.432
-## q892                           14.242
-## q633                           13.669
-## q872                           13.392
-## race43                         12.417
-## q412                           12.382
-## qnothhpl2                      11.878
-## race42                         11.577
-## q262                           11.492
-## q893                           11.376
-## sex2                           10.881
-## q172                           10.359
-## age6                           10.203
-## q653                           10.116
-## q472                            9.950
-## sitenamePhiladelphia, PA (PH)   9.656
-## q212                            9.378
-## grade3                          9.359
-## q232                            9.115</code></pre>
+<pre class="r"><code>var_imp = varImp(model_rf)
+
+var_imp$importance %&gt;% arrange(desc(Overall))</code></pre>
+<pre><code>##                                          Overall
+## bmi                                  100.0000000
+## q302                                  15.4324847
+## q892                                  14.2424175
+## q633                                  13.6689100
+## q872                                  13.3923563
+## race43                                12.4174554
+## q412                                  12.3819542
+## qnothhpl2                             11.8778197
+## race42                                11.5766730
+## q262                                  11.4920857
+## q893                                  11.3760503
+## sex2                                  10.8808746
+## q172                                  10.3589025
+## age6                                  10.2032309
+## q653                                  10.1159722
+## q472                                   9.9501491
+## sitenamePhiladelphia, PA (PH)          9.6557499
+## q212                                   9.3777171
+## grade3                                 9.3590802
+## q232                                   9.1145458
+## sitenamePalm Beach County, FL (PB)     8.8455606
+## grade2                                 8.7298200
+## age5                                   8.6177687
+## q473                                   8.5530805
+## grade4                                 8.5495601
+## q413                                   8.3423577
+## sitenameFort Worth, TX (FW)            8.2127934
+## q492                                   8.0754395
+## sitenameChicago, IL (CH)               7.9800774
+## q173                                   7.9492505
+## age7                                   7.4413669
+## race44                                 7.3143791
+## sitenamePortland, OR (PO)              7.0591589
+## sitenameNewark, NJ (NW)                6.9135293
+## q897                                   6.8676203
+## sitenameSan Francisco, CA (SF)         6.8294254
+## sitenamePasco County, FL (PS)          6.8142342
+## age4                                   6.7734586
+## sitenameHillsborough County, FL (HL)   6.6158644
+## q475                                   6.1062163
+## q654                                   5.8774506
+## q474                                   5.5047696
+## q414                                   5.2245650
+## sitenameShelby County, TN (ST)         5.1233437
+## q476                                   5.0796660
+## sitenameLos Angeles, CA (LO)           4.9204875
+## sitenameGenesee Consortium, MI (GE)    4.6605560
+## sitenameEaton Consortium, MI (EA)      4.5596980
+## sitenameOrange County, FL (OL)         4.4060652
+## q493                                   4.2723139
+## q894                                   4.2048245
+## q873                                   4.1282687
+## q502                                   3.8271997
+## q174                                   3.1372438
+## q415                                   3.0991961
+## q178                                   3.0256116
+## q496                                   2.9564297
+## q895                                   2.8485967
+## q494                                   2.2563735
+## q213                                   2.1921878
+## q214                                   2.0845391
+## q216                                   1.1649540
+## q532                                   1.1106915
+## q176                                   0.7952136
+## q495                                   0.6816372
+## q175                                   0.5351355
+## q177                                   0.5017163
+## q896                                   0.3363419
+## q417                                   0.2220746
+## q522                                   0.2110116
+## q215                                   0.1651574
+## q416                                   0.0000000</code></pre>
 <pre class="r"><code>rf_outcome &lt;- predict(model_rf, df_district_train, type = &quot;raw&quot;)
 confusionMatrix(rf_outcome, df_district_train$q85)</code></pre>
 <pre><code>## Confusion Matrix and Statistics
@@ -4200,953 +4250,377 @@ for (sitename in unique_sitenames) {
     &quot;PerformanceMetrics&quot; = performance_metrics,
     &quot;VariableImportance&quot; = variable_importance
   )
+}</code></pre>
+<div id="save-the-random-forest-results-into-an-excel-file" class="section level2">
+<h2>save the random forest results into an excel file</h2>
+<pre class="r"><code># Extract all VariableImportance data frames
+variable_importance_dfs &lt;- lapply(results, function(x) x$VariableImportance)
+
+# Combine them into a single data frame using rbind
+combined_df &lt;- do.call(rbind, variable_importance_dfs)
+
+# Reset the row names to create an index column
+combined_df &lt;- combined_df %&gt;% rownames_to_column(var = &quot;Index&quot;)
+
+# Separate the Index column into two columns: Location and Variable
+combined_df &lt;- combined_df %&gt;% separate(Index, into = c(&quot;Location&quot;, &quot;Variable&quot;), sep = &quot;\\.&quot;)
+
+# View the resulting data frame
+print(combined_df)</code></pre>
+<pre><code>##                         Location Variable      Overall
+## 1               Chicago, IL (CH) sitename  0.000000000
+## 2               Chicago, IL (CH)      age  5.358185295
+## 3               Chicago, IL (CH)      sex  1.766232646
+## 4               Chicago, IL (CH)    grade  4.483600600
+## 5               Chicago, IL (CH)    race4  3.832155706
+## 6               Chicago, IL (CH)      bmi 12.786839303
+## 7               Chicago, IL (CH) qnothhpl  2.201376694
+## 8               Chicago, IL (CH)      q17  4.406102349
+## 9               Chicago, IL (CH)      q21  2.595845806
+## 10              Chicago, IL (CH)      q23  1.381108174
+## 11              Chicago, IL (CH)      q26  1.586209802
+## 12              Chicago, IL (CH)      q30  2.394840990
+## 13              Chicago, IL (CH)      q41  5.647704894
+## 14              Chicago, IL (CH)      q47  6.556790577
+## 15              Chicago, IL (CH)      q49  3.716725662
+## 16              Chicago, IL (CH)      q50  0.771012784
+## 17              Chicago, IL (CH)      q52  0.054798843
+## 18              Chicago, IL (CH)      q53  0.067369246
+## 19              Chicago, IL (CH)      q63  2.279483927
+## 20              Chicago, IL (CH)      q65  2.661223358
+## 21              Chicago, IL (CH)      q87  2.919637964
+## 22              Chicago, IL (CH)      q89  6.189354138
+## 23     Eaton Consortium, MI (EA) sitename  0.000000000
+## 24     Eaton Consortium, MI (EA)      age  3.355298271
+## 25     Eaton Consortium, MI (EA)      sex  0.907006610
+## 26     Eaton Consortium, MI (EA)    grade  3.482588972
+## 27     Eaton Consortium, MI (EA)    race4  3.771612826
+## 28     Eaton Consortium, MI (EA)      bmi  7.997097519
+## 29     Eaton Consortium, MI (EA) qnothhpl  2.024056093
+## 30     Eaton Consortium, MI (EA)      q17  3.170896667
+## 31     Eaton Consortium, MI (EA)      q21  1.224311081
+## 32     Eaton Consortium, MI (EA)      q23  0.900355928
+## 33     Eaton Consortium, MI (EA)      q26  1.471893213
+## 34     Eaton Consortium, MI (EA)      q30  1.142258693
+## 35     Eaton Consortium, MI (EA)      q41  2.678070118
+## 36     Eaton Consortium, MI (EA)      q47  2.906710795
+## 37     Eaton Consortium, MI (EA)      q49  2.282226292
+## 38     Eaton Consortium, MI (EA)      q50  0.008791868
+## 39     Eaton Consortium, MI (EA)      q52  0.000000000
+## 40     Eaton Consortium, MI (EA)      q53  0.000000000
+## 41     Eaton Consortium, MI (EA)      q63  1.532180697
+## 42     Eaton Consortium, MI (EA)      q65  1.607071149
+## 43     Eaton Consortium, MI (EA)      q87  1.841431114
+## 44     Eaton Consortium, MI (EA)      q89  4.015216015
+## 45       Broward County, FL (FT) sitename  0.000000000
+## 46       Broward County, FL (FT)      age  4.875799057
+## 47       Broward County, FL (FT)      sex  1.983385162
+## 48       Broward County, FL (FT)    grade  3.300315560
+## 49       Broward County, FL (FT)    race4  5.098133379
+## 50       Broward County, FL (FT)      bmi 11.957758770
+## 51       Broward County, FL (FT) qnothhpl  2.202685960
+## 52       Broward County, FL (FT)      q17  3.358269720
+## 53       Broward County, FL (FT)      q21  3.379823112
+## 54       Broward County, FL (FT)      q23  1.546778105
+## 55       Broward County, FL (FT)      q26  1.758429524
+## 56       Broward County, FL (FT)      q30  1.722137435
+## 57       Broward County, FL (FT)      q41  6.240882579
+## 58       Broward County, FL (FT)      q47  6.872508947
+## 59       Broward County, FL (FT)      q49  3.223649137
+## 60       Broward County, FL (FT)      q50  0.338772556
+## 61       Broward County, FL (FT)      q52  0.023970790
+## 62       Broward County, FL (FT)      q53  0.000000000
+## 63       Broward County, FL (FT)      q63  1.990127828
+## 64       Broward County, FL (FT)      q65  3.110049898
+## 65       Broward County, FL (FT)      q87  2.234745402
+## 66       Broward County, FL (FT)      q89  5.196896658
+## 67           Fort Worth, TX (FW) sitename  0.000000000
+## 68           Fort Worth, TX (FW)      age  6.542049965
+## 69           Fort Worth, TX (FW)      sex  2.450999753
+## 70           Fort Worth, TX (FW)    grade  7.099287184
+## 71           Fort Worth, TX (FW)    race4  5.034357085
+## 72           Fort Worth, TX (FW)      bmi 13.900555911
+## 73           Fort Worth, TX (FW) qnothhpl  3.451294544
+## 74           Fort Worth, TX (FW)      q17  7.392354386
+## 75           Fort Worth, TX (FW)      q21  3.141666576
+## 76           Fort Worth, TX (FW)      q23  0.892192861
+## 77           Fort Worth, TX (FW)      q26  1.848365413
+## 78           Fort Worth, TX (FW)      q30  2.047894418
+## 79           Fort Worth, TX (FW)      q41  6.188374236
+## 80           Fort Worth, TX (FW)      q47  7.988877059
+## 81           Fort Worth, TX (FW)      q49  3.593186602
+## 82           Fort Worth, TX (FW)      q50  0.592180741
+## 83           Fort Worth, TX (FW)      q52  0.000000000
+## 84           Fort Worth, TX (FW)      q53  0.208059385
+## 85           Fort Worth, TX (FW)      q63  3.242755724
+## 86           Fort Worth, TX (FW)      q65  3.159452155
+## 87           Fort Worth, TX (FW)      q87  3.014700930
+## 88           Fort Worth, TX (FW)      q89  7.790003323
+## 89   Genesee Consortium, MI (GE) sitename  0.000000000
+## 90   Genesee Consortium, MI (GE)      age  4.680717637
+## 91   Genesee Consortium, MI (GE)      sex  1.383391339
+## 92   Genesee Consortium, MI (GE)    grade  4.052720630
+## 93   Genesee Consortium, MI (GE)    race4  4.266531818
+## 94   Genesee Consortium, MI (GE)      bmi  9.791705020
+## 95   Genesee Consortium, MI (GE) qnothhpl  2.790623379
+## 96   Genesee Consortium, MI (GE)      q17  3.405211704
+## 97   Genesee Consortium, MI (GE)      q21  3.370719355
+## 98   Genesee Consortium, MI (GE)      q23  2.070433731
+## 99   Genesee Consortium, MI (GE)      q26  1.320994136
+## 100  Genesee Consortium, MI (GE)      q30  1.619826786
+## 101  Genesee Consortium, MI (GE)      q41  3.563539220
+## 102  Genesee Consortium, MI (GE)      q47  4.540730940
+## 103  Genesee Consortium, MI (GE)      q49  3.890920814
+## 104  Genesee Consortium, MI (GE)      q50  0.651169866
+## 105  Genesee Consortium, MI (GE)      q52  0.037270292
+## 106  Genesee Consortium, MI (GE)      q53  0.689921838
+## 107  Genesee Consortium, MI (GE)      q63  1.895907492
+## 108  Genesee Consortium, MI (GE)      q65  2.380628853
+## 109  Genesee Consortium, MI (GE)      q87  3.517769054
+## 110  Genesee Consortium, MI (GE)      q89  5.307241457
+## 111 Hillsborough County, FL (HL) sitename  0.000000000
+## 112 Hillsborough County, FL (HL)      age  5.060273703
+## 113 Hillsborough County, FL (HL)      sex  2.389686909
+## 114 Hillsborough County, FL (HL)    grade  3.741345441
+## 115 Hillsborough County, FL (HL)    race4  4.009011441
+## 116 Hillsborough County, FL (HL)      bmi 10.925375202
+## 117 Hillsborough County, FL (HL) qnothhpl  1.995766025
+## 118 Hillsborough County, FL (HL)      q17  6.989798741
+## 119 Hillsborough County, FL (HL)      q21  3.098316680
+## 120 Hillsborough County, FL (HL)      q23  1.353616915
+## 121 Hillsborough County, FL (HL)      q26  2.267606417
+## 122 Hillsborough County, FL (HL)      q30  1.649880006
+## 123 Hillsborough County, FL (HL)      q41  6.229195823
+## 124 Hillsborough County, FL (HL)      q47  9.952825281
+## 125 Hillsborough County, FL (HL)      q49  3.686575357
+## 126 Hillsborough County, FL (HL)      q50  0.633511927
+## 127 Hillsborough County, FL (HL)      q52  0.059227012
+## 128 Hillsborough County, FL (HL)      q53  0.303265848
+## 129 Hillsborough County, FL (HL)      q63  2.085042355
+## 130 Hillsborough County, FL (HL)      q65  3.546234188
+## 131 Hillsborough County, FL (HL)      q87  3.642238670
+## 132 Hillsborough County, FL (HL)      q89  6.593251827
+## 133         Los Angeles, CA (LO) sitename  0.000000000
+## 134         Los Angeles, CA (LO)      age  3.024399113
+## 135         Los Angeles, CA (LO)      sex  1.681417141
+## 136         Los Angeles, CA (LO)    grade  2.771194775
+## 137         Los Angeles, CA (LO)    race4  2.266635445
+## 138         Los Angeles, CA (LO)      bmi  7.720185447
+## 139         Los Angeles, CA (LO) qnothhpl  1.316432853
+## 140         Los Angeles, CA (LO)      q17  2.185165980
+## 141         Los Angeles, CA (LO)      q21  2.262152800
+## 142         Los Angeles, CA (LO)      q23  0.484874980
+## 143         Los Angeles, CA (LO)      q26  0.743681303
+## 144         Los Angeles, CA (LO)      q30  0.664288251
+## 145         Los Angeles, CA (LO)      q41  2.801043665
+## 146         Los Angeles, CA (LO)      q47  2.070339438
+## 147         Los Angeles, CA (LO)      q49  1.337621026
+## 148         Los Angeles, CA (LO)      q50  0.653461747
+## 149         Los Angeles, CA (LO)      q52  0.216911014
+## 150         Los Angeles, CA (LO)      q53  0.164642949
+## 151         Los Angeles, CA (LO)      q63  1.187961701
+## 152         Los Angeles, CA (LO)      q65  2.683831394
+## 153         Los Angeles, CA (LO)      q87  2.143446199
+## 154         Los Angeles, CA (LO)      q89  2.776633891
+## 155              Newark, NJ (NW) sitename  0.000000000
+## 156              Newark, NJ (NW)      age  5.029512864
+## 157              Newark, NJ (NW)      sex  1.799532319
+## 158              Newark, NJ (NW)    grade  4.648808711
+## 159              Newark, NJ (NW)    race4  3.530703272
+## 160              Newark, NJ (NW)      bmi 10.137287144
+## 161              Newark, NJ (NW) qnothhpl  2.444041419
+## 162              Newark, NJ (NW)      q17  4.180626641
+## 163              Newark, NJ (NW)      q21  2.657606135
+## 164              Newark, NJ (NW)      q23  1.259800043
+## 165              Newark, NJ (NW)      q26  1.328514170
+## 166              Newark, NJ (NW)      q30  1.292650181
+## 167              Newark, NJ (NW)      q41  4.179027899
+## 168              Newark, NJ (NW)      q47  7.637661622
+## 169              Newark, NJ (NW)      q49  3.231554829
+## 170              Newark, NJ (NW)      q50  0.304609062
+## 171              Newark, NJ (NW)      q52  0.317643634
+## 172              Newark, NJ (NW)      q53  0.235184669
+## 173              Newark, NJ (NW)      q63  1.971175671
+## 174              Newark, NJ (NW)      q65  3.428369694
+## 175              Newark, NJ (NW)      q87  3.549415464
+## 176              Newark, NJ (NW)      q89  5.242596818
+## 177       Orange County, FL (OL) sitename  0.000000000
+## 178       Orange County, FL (OL)      age  3.398651214
+## 179       Orange County, FL (OL)      sex  1.060120638
+## 180       Orange County, FL (OL)    grade  2.810772249
+## 181       Orange County, FL (OL)    race4  3.429245234
+## 182       Orange County, FL (OL)      bmi  7.521702714
+## 183       Orange County, FL (OL) qnothhpl  2.217485106
+## 184       Orange County, FL (OL)      q17  2.523162011
+## 185       Orange County, FL (OL)      q21  2.356087743
+## 186       Orange County, FL (OL)      q23  0.793131788
+## 187       Orange County, FL (OL)      q26  0.790530454
+## 188       Orange County, FL (OL)      q30  0.783734779
+## 189       Orange County, FL (OL)      q41  2.991303699
+## 190       Orange County, FL (OL)      q47  3.610426973
+## 191       Orange County, FL (OL)      q49  2.113962040
+## 192       Orange County, FL (OL)      q50  0.326005388
+## 193       Orange County, FL (OL)      q52  0.031073447
+## 194       Orange County, FL (OL)      q53  0.018090258
+## 195       Orange County, FL (OL)      q63  1.612399847
+## 196       Orange County, FL (OL)      q65  1.821720883
+## 197       Orange County, FL (OL)      q87  2.240729711
+## 198       Orange County, FL (OL)      q89  4.047700154
+## 199   Palm Beach County, FL (PB) sitename  0.000000000
+## 200   Palm Beach County, FL (PB)      age  7.998343537
+## 201   Palm Beach County, FL (PB)      sex  2.368427027
+## 202   Palm Beach County, FL (PB)    grade  6.966340379
+## 203   Palm Beach County, FL (PB)    race4  7.681966982
+## 204   Palm Beach County, FL (PB)      bmi 17.201662278
+## 205   Palm Beach County, FL (PB) qnothhpl  3.372967241
+## 206   Palm Beach County, FL (PB)      q17  7.725684008
+## 207   Palm Beach County, FL (PB)      q21  5.300067329
+## 208   Palm Beach County, FL (PB)      q23  2.023142849
+## 209   Palm Beach County, FL (PB)      q26  3.423740794
+## 210   Palm Beach County, FL (PB)      q30  3.419485720
+## 211   Palm Beach County, FL (PB)      q41  9.448887200
+## 212   Palm Beach County, FL (PB)      q47 10.458263841
+## 213   Palm Beach County, FL (PB)      q49  6.742866141
+## 214   Palm Beach County, FL (PB)      q50  1.039118200
+## 215   Palm Beach County, FL (PB)      q52  0.433479321
+## 216   Palm Beach County, FL (PB)      q53  0.762302375
+## 217   Palm Beach County, FL (PB)      q63  4.517440865
+## 218   Palm Beach County, FL (PB)      q65  4.485699167
+## 219   Palm Beach County, FL (PB)      q87  4.135480030
+## 220   Palm Beach County, FL (PB)      q89  8.297728955
+## 221        Philadelphia, PA (PH) sitename  0.000000000
+## 222        Philadelphia, PA (PH)      age  7.222755366
+## 223        Philadelphia, PA (PH)      sex  1.902037372
+## 224        Philadelphia, PA (PH)    grade  4.481423962
+## 225        Philadelphia, PA (PH)    race4  7.613309202
+## 226        Philadelphia, PA (PH)      bmi 11.154703623
+## 227        Philadelphia, PA (PH) qnothhpl  3.464025888
+## 228        Philadelphia, PA (PH)      q17  4.713291433
+## 229        Philadelphia, PA (PH)      q21  0.946261597
+## 230        Philadelphia, PA (PH)      q23  1.285732845
+## 231        Philadelphia, PA (PH)      q26  2.734416715
+## 232        Philadelphia, PA (PH)      q30  2.253763950
+## 233        Philadelphia, PA (PH)      q41  5.116283999
+## 234        Philadelphia, PA (PH)      q47  7.054838291
+## 235        Philadelphia, PA (PH)      q49  3.529633022
+## 236        Philadelphia, PA (PH)      q50  0.000000000
+## 237        Philadelphia, PA (PH)      q52  0.003482051
+## 238        Philadelphia, PA (PH)      q53  0.003043219
+## 239        Philadelphia, PA (PH)      q63  2.564436836
+## 240        Philadelphia, PA (PH)      q65  4.908618603
+## 241        Philadelphia, PA (PH)      q87  3.273114147
+## 242        Philadelphia, PA (PH)      q89  8.223281410
+## 243            Portland, OR (PO) sitename  0.000000000
+## 244            Portland, OR (PO)      age  7.977620991
+## 245            Portland, OR (PO)      sex  3.372318739
+## 246            Portland, OR (PO)    grade  6.737761719
+## 247            Portland, OR (PO)    race4  5.440893190
+## 248            Portland, OR (PO)      bmi 15.129636582
+## 249            Portland, OR (PO) qnothhpl  4.532010076
+## 250            Portland, OR (PO)      q17  4.613819850
+## 251            Portland, OR (PO)      q21  3.598735729
+## 252            Portland, OR (PO)      q23  2.742396306
+## 253            Portland, OR (PO)      q26  2.614833850
+## 254            Portland, OR (PO)      q30  2.848010535
+## 255            Portland, OR (PO)      q41  7.842434423
+## 256            Portland, OR (PO)      q47  7.947038719
+## 257            Portland, OR (PO)      q49  4.605425270
+## 258            Portland, OR (PO)      q50  1.291556195
+## 259            Portland, OR (PO)      q52  0.053048397
+## 260            Portland, OR (PO)      q53  0.351691275
+## 261            Portland, OR (PO)      q63  2.673864555
+## 262            Portland, OR (PO)      q65  5.344802459
+## 263            Portland, OR (PO)      q87  3.841168883
+## 264            Portland, OR (PO)      q89  7.591166373
+## 265        Pasco County, FL (PS) sitename  0.000000000
+## 266        Pasco County, FL (PS)      age  4.989980984
+## 267        Pasco County, FL (PS)      sex  1.624663843
+## 268        Pasco County, FL (PS)    grade  4.433175499
+## 269        Pasco County, FL (PS)    race4  2.610836789
+## 270        Pasco County, FL (PS)      bmi 12.128944073
+## 271        Pasco County, FL (PS) qnothhpl  2.403170049
+## 272        Pasco County, FL (PS)      q17  5.582688114
+## 273        Pasco County, FL (PS)      q21  3.509277910
+## 274        Pasco County, FL (PS)      q23  1.774724453
+## 275        Pasco County, FL (PS)      q26  1.477275492
+## 276        Pasco County, FL (PS)      q30  2.342619499
+## 277        Pasco County, FL (PS)      q41  3.891730658
+## 278        Pasco County, FL (PS)      q47  6.409886240
+## 279        Pasco County, FL (PS)      q49  3.305055682
+## 280        Pasco County, FL (PS)      q50  1.561151896
+## 281        Pasco County, FL (PS)      q52  0.070022481
+## 282        Pasco County, FL (PS)      q53  0.059863879
+## 283        Pasco County, FL (PS)      q63  1.833833062
+## 284        Pasco County, FL (PS)      q65  3.530086802
+## 285        Pasco County, FL (PS)      q87  1.644079330
+## 286        Pasco County, FL (PS)      q89  4.410210613
+## 287       San Francisco, CA (SF) sitename  0.000000000
+## 288       San Francisco, CA (SF)      age  7.241662751
+## 289       San Francisco, CA (SF)      sex  2.886123892
+## 290       San Francisco, CA (SF)    grade  5.104077630
+## 291       San Francisco, CA (SF)    race4  6.073375395
+## 292       San Francisco, CA (SF)      bmi 15.107381392
+## 293       San Francisco, CA (SF) qnothhpl  5.428942530
+## 294       San Francisco, CA (SF)      q17  5.484200152
+## 295       San Francisco, CA (SF)      q21  3.968631662
+## 296       San Francisco, CA (SF)      q23  1.666986842
+## 297       San Francisco, CA (SF)      q26  2.687996390
+## 298       San Francisco, CA (SF)      q30  3.055235598
+## 299       San Francisco, CA (SF)      q41  6.650985578
+## 300       San Francisco, CA (SF)      q47  7.829461252
+## 301       San Francisco, CA (SF)      q49  5.942338980
+## 302       San Francisco, CA (SF)      q50  1.360894743
+## 303       San Francisco, CA (SF)      q52  0.067437930
+## 304       San Francisco, CA (SF)      q53  0.312632875
+## 305       San Francisco, CA (SF)      q63  3.094017908
+## 306       San Francisco, CA (SF)      q65  4.652326532
+## 307       San Francisco, CA (SF)      q87  3.369957808
+## 308       San Francisco, CA (SF)      q89  9.046882435
+## 309       Shelby County, TN (ST) sitename  0.000000000
+## 310       Shelby County, TN (ST)      age  4.668915985
+## 311       Shelby County, TN (ST)      sex  1.886558681
+## 312       Shelby County, TN (ST)    grade  4.124517231
+## 313       Shelby County, TN (ST)    race4  3.584820363
+## 314       Shelby County, TN (ST)      bmi  9.852070120
+## 315       Shelby County, TN (ST) qnothhpl  1.998050062
+## 316       Shelby County, TN (ST)      q17  6.554491322
+## 317       Shelby County, TN (ST)      q21  2.204931610
+## 318       Shelby County, TN (ST)      q23  1.457462491
+## 319       Shelby County, TN (ST)      q26  1.434503094
+## 320       Shelby County, TN (ST)      q30  1.286331809
+## 321       Shelby County, TN (ST)      q41  5.222681328
+## 322       Shelby County, TN (ST)      q47 10.460281817
+## 323       Shelby County, TN (ST)      q49  3.375380927
+## 324       Shelby County, TN (ST)      q50  0.436244583
+## 325       Shelby County, TN (ST)      q52  0.230635833
+## 326       Shelby County, TN (ST)      q53  0.619286314
+## 327       Shelby County, TN (ST)      q63  2.066225773
+## 328       Shelby County, TN (ST)      q65  3.282380923
+## 329       Shelby County, TN (ST)      q87  1.794916578
+## 330       Shelby County, TN (ST)      q89  5.722350662</code></pre>
+<pre class="r"><code># Install and load openxlsx package if you haven&#39;t already
+if (!requireNamespace(&quot;openxlsx&quot;, quietly = TRUE)) {
+  install.packages(&quot;openxlsx&quot;)
+}
+library(openxlsx)
+
+# Create a new Excel workbook
+wb &lt;- createWorkbook()
+
+# Assuming combined_df is your data frame
+# Split the data frame by Location
+dfs_by_location &lt;- split(combined_df, combined_df$Location)
+
+# Write each subset to a separate sheet in the Excel workbook
+for (location in names(dfs_by_location)) {
+  df &lt;- dfs_by_location[[location]]
+  addWorksheet(wb, location)
+  writeData(wb, location, df)
 }
 
-# Print the results
-print(results)</code></pre>
-<pre><code>## $`Chicago, IL (CH)`
-## $`Chicago, IL (CH)`$ConfusionMatrix
-## Confusion Matrix and Statistics
-## 
-##           Reference
-## Prediction  1  2  3
-##          1 48  0  0
-##          2  0 98  0
-##          3  0  0 11
-## 
-## Overall Statistics
-##                                      
-##                Accuracy : 1          
-##                  95% CI : (0.9768, 1)
-##     No Information Rate : 0.6242     
-##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16  
-##                                      
-##                   Kappa : 1          
-##                                      
-##  Mcnemar&#39;s Test P-Value : NA         
-## 
-## Statistics by Class:
-## 
-##                      Class: 1 Class: 2 Class: 3
-## Sensitivity            1.0000   1.0000  1.00000
-## Specificity            1.0000   1.0000  1.00000
-## Pos Pred Value         1.0000   1.0000  1.00000
-## Neg Pred Value         1.0000   1.0000  1.00000
-## Prevalence             0.3057   0.6242  0.07006
-## Detection Rate         0.3057   0.6242  0.07006
-## Detection Prevalence   0.3057   0.6242  0.07006
-## Balanced Accuracy      1.0000   1.0000  1.00000
-## 
-## $`Chicago, IL (CH)`$PerformanceMetrics
-## Accuracy    Kappa 
-##        1        1 
-## 
-## $`Chicago, IL (CH)`$VariableImportance
-##              Overall
-## sitename  0.00000000
-## age       5.35818530
-## sex       1.76623265
-## grade     4.48360060
-## race4     3.83215571
-## bmi      12.78683930
-## qnothhpl  2.20137669
-## q17       4.40610235
-## q21       2.59584581
-## q23       1.38110817
-## q26       1.58620980
-## q30       2.39484099
-## q41       5.64770489
-## q47       6.55679058
-## q49       3.71672566
-## q50       0.77101278
-## q52       0.05479884
-## q53       0.06736925
-## q63       2.27948393
-## q65       2.66122336
-## q87       2.91963796
-## q89       6.18935414
-## 
-## 
-## $`Eaton Consortium, MI (EA)`
-## $`Eaton Consortium, MI (EA)`$ConfusionMatrix
-## Confusion Matrix and Statistics
-## 
-##           Reference
-## Prediction  1  2  3
-##          1 21  0  0
-##          2  0 99  0
-##          3  0  0  9
-## 
-## Overall Statistics
-##                                      
-##                Accuracy : 1          
-##                  95% CI : (0.9718, 1)
-##     No Information Rate : 0.7674     
-##     P-Value [Acc &gt; NIR] : 1.482e-15  
-##                                      
-##                   Kappa : 1          
-##                                      
-##  Mcnemar&#39;s Test P-Value : NA         
-## 
-## Statistics by Class:
-## 
-##                      Class: 1 Class: 2 Class: 3
-## Sensitivity            1.0000   1.0000  1.00000
-## Specificity            1.0000   1.0000  1.00000
-## Pos Pred Value         1.0000   1.0000  1.00000
-## Neg Pred Value         1.0000   1.0000  1.00000
-## Prevalence             0.1628   0.7674  0.06977
-## Detection Rate         0.1628   0.7674  0.06977
-## Detection Prevalence   0.1628   0.7674  0.06977
-## Balanced Accuracy      1.0000   1.0000  1.00000
-## 
-## $`Eaton Consortium, MI (EA)`$PerformanceMetrics
-## Accuracy    Kappa 
-##        1        1 
-## 
-## $`Eaton Consortium, MI (EA)`$VariableImportance
-##              Overall
-## sitename 0.000000000
-## age      3.355298271
-## sex      0.907006610
-## grade    3.482588972
-## race4    3.771612826
-## bmi      7.997097519
-## qnothhpl 2.024056093
-## q17      3.170896667
-## q21      1.224311081
-## q23      0.900355928
-## q26      1.471893213
-## q30      1.142258693
-## q41      2.678070118
-## q47      2.906710795
-## q49      2.282226292
-## q50      0.008791868
-## q52      0.000000000
-## q53      0.000000000
-## q63      1.532180697
-## q65      1.607071149
-## q87      1.841431114
-## q89      4.015216015
-## 
-## 
-## $`Broward County, FL (FT)`
-## $`Broward County, FL (FT)`$ConfusionMatrix
-## Confusion Matrix and Statistics
-## 
-##           Reference
-## Prediction   1   2   3
-##          1  48   0   0
-##          2   0 114   0
-##          3   0   0   6
-## 
-## Overall Statistics
-##                                      
-##                Accuracy : 1          
-##                  95% CI : (0.9783, 1)
-##     No Information Rate : 0.6786     
-##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16  
-##                                      
-##                   Kappa : 1          
-##                                      
-##  Mcnemar&#39;s Test P-Value : NA         
-## 
-## Statistics by Class:
-## 
-##                      Class: 1 Class: 2 Class: 3
-## Sensitivity            1.0000   1.0000  1.00000
-## Specificity            1.0000   1.0000  1.00000
-## Pos Pred Value         1.0000   1.0000  1.00000
-## Neg Pred Value         1.0000   1.0000  1.00000
-## Prevalence             0.2857   0.6786  0.03571
-## Detection Rate         0.2857   0.6786  0.03571
-## Detection Prevalence   0.2857   0.6786  0.03571
-## Balanced Accuracy      1.0000   1.0000  1.00000
-## 
-## $`Broward County, FL (FT)`$PerformanceMetrics
-## Accuracy    Kappa 
-##        1        1 
-## 
-## $`Broward County, FL (FT)`$VariableImportance
-##              Overall
-## sitename  0.00000000
-## age       4.87579906
-## sex       1.98338516
-## grade     3.30031556
-## race4     5.09813338
-## bmi      11.95775877
-## qnothhpl  2.20268596
-## q17       3.35826972
-## q21       3.37982311
-## q23       1.54677810
-## q26       1.75842952
-## q30       1.72213743
-## q41       6.24088258
-## q47       6.87250895
-## q49       3.22364914
-## q50       0.33877256
-## q52       0.02397079
-## q53       0.00000000
-## q63       1.99012783
-## q65       3.11004990
-## q87       2.23474540
-## q89       5.19689666
-## 
-## 
-## $`Fort Worth, TX (FW)`
-## $`Fort Worth, TX (FW)`$ConfusionMatrix
-## Confusion Matrix and Statistics
-## 
-##           Reference
-## Prediction   1   2   3
-##          1  42   0   0
-##          2   3 174   3
-##          3   0   0  15
-## 
-## Overall Statistics
-##                                           
-##                Accuracy : 0.9747          
-##                  95% CI : (0.9457, 0.9907)
-##     No Information Rate : 0.7342          
-##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
-##                                           
-##                   Kappa : 0.9373          
-##                                           
-##  Mcnemar&#39;s Test P-Value : NA              
-## 
-## Statistics by Class:
-## 
-##                      Class: 1 Class: 2 Class: 3
-## Sensitivity            0.9333   1.0000  0.83333
-## Specificity            1.0000   0.9048  1.00000
-## Pos Pred Value         1.0000   0.9667  1.00000
-## Neg Pred Value         0.9846   1.0000  0.98649
-## Prevalence             0.1899   0.7342  0.07595
-## Detection Rate         0.1772   0.7342  0.06329
-## Detection Prevalence   0.1772   0.7595  0.06329
-## Balanced Accuracy      0.9667   0.9524  0.91667
-## 
-## $`Fort Worth, TX (FW)`$PerformanceMetrics
-##  Accuracy     Kappa 
-## 0.9746835 0.9373265 
-## 
-## $`Fort Worth, TX (FW)`$VariableImportance
-##             Overall
-## sitename  0.0000000
-## age       6.5420500
-## sex       2.4509998
-## grade     7.0992872
-## race4     5.0343571
-## bmi      13.9005559
-## qnothhpl  3.4512945
-## q17       7.3923544
-## q21       3.1416666
-## q23       0.8921929
-## q26       1.8483654
-## q30       2.0478944
-## q41       6.1883742
-## q47       7.9888771
-## q49       3.5931866
-## q50       0.5921807
-## q52       0.0000000
-## q53       0.2080594
-## q63       3.2427557
-## q65       3.1594522
-## q87       3.0147009
-## q89       7.7900033
-## 
-## 
-## $`Genesee Consortium, MI (GE)`
-## $`Genesee Consortium, MI (GE)`$ConfusionMatrix
-## Confusion Matrix and Statistics
-## 
-##           Reference
-## Prediction   1   2   3
-##          1  38   0   0
-##          2   0 120   0
-##          3   0   0   8
-## 
-## Overall Statistics
-##                                     
-##                Accuracy : 1         
-##                  95% CI : (0.978, 1)
-##     No Information Rate : 0.7229    
-##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16 
-##                                     
-##                   Kappa : 1         
-##                                     
-##  Mcnemar&#39;s Test P-Value : NA        
-## 
-## Statistics by Class:
-## 
-##                      Class: 1 Class: 2 Class: 3
-## Sensitivity            1.0000   1.0000  1.00000
-## Specificity            1.0000   1.0000  1.00000
-## Pos Pred Value         1.0000   1.0000  1.00000
-## Neg Pred Value         1.0000   1.0000  1.00000
-## Prevalence             0.2289   0.7229  0.04819
-## Detection Rate         0.2289   0.7229  0.04819
-## Detection Prevalence   0.2289   0.7229  0.04819
-## Balanced Accuracy      1.0000   1.0000  1.00000
-## 
-## $`Genesee Consortium, MI (GE)`$PerformanceMetrics
-## Accuracy    Kappa 
-##        1        1 
-## 
-## $`Genesee Consortium, MI (GE)`$VariableImportance
-##             Overall
-## sitename 0.00000000
-## age      4.68071764
-## sex      1.38339134
-## grade    4.05272063
-## race4    4.26653182
-## bmi      9.79170502
-## qnothhpl 2.79062338
-## q17      3.40521170
-## q21      3.37071935
-## q23      2.07043373
-## q26      1.32099414
-## q30      1.61982679
-## q41      3.56353922
-## q47      4.54073094
-## q49      3.89092081
-## q50      0.65116987
-## q52      0.03727029
-## q53      0.68992184
-## q63      1.89590749
-## q65      2.38062885
-## q87      3.51776905
-## q89      5.30724146
-## 
-## 
-## $`Hillsborough County, FL (HL)`
-## $`Hillsborough County, FL (HL)`$ConfusionMatrix
-## Confusion Matrix and Statistics
-## 
-##           Reference
-## Prediction   1   2   3
-##          1  37   0   0
-##          2   0 197   0
-##          3   0   0  14
-## 
-## Overall Statistics
-##                                      
-##                Accuracy : 1          
-##                  95% CI : (0.9852, 1)
-##     No Information Rate : 0.7944     
-##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16  
-##                                      
-##                   Kappa : 1          
-##                                      
-##  Mcnemar&#39;s Test P-Value : NA         
-## 
-## Statistics by Class:
-## 
-##                      Class: 1 Class: 2 Class: 3
-## Sensitivity            1.0000   1.0000  1.00000
-## Specificity            1.0000   1.0000  1.00000
-## Pos Pred Value         1.0000   1.0000  1.00000
-## Neg Pred Value         1.0000   1.0000  1.00000
-## Prevalence             0.1492   0.7944  0.05645
-## Detection Rate         0.1492   0.7944  0.05645
-## Detection Prevalence   0.1492   0.7944  0.05645
-## Balanced Accuracy      1.0000   1.0000  1.00000
-## 
-## $`Hillsborough County, FL (HL)`$PerformanceMetrics
-## Accuracy    Kappa 
-##        1        1 
-## 
-## $`Hillsborough County, FL (HL)`$VariableImportance
-##              Overall
-## sitename  0.00000000
-## age       5.06027370
-## sex       2.38968691
-## grade     3.74134544
-## race4     4.00901144
-## bmi      10.92537520
-## qnothhpl  1.99576602
-## q17       6.98979874
-## q21       3.09831668
-## q23       1.35361691
-## q26       2.26760642
-## q30       1.64988001
-## q41       6.22919582
-## q47       9.95282528
-## q49       3.68657536
-## q50       0.63351193
-## q52       0.05922701
-## q53       0.30326585
-## q63       2.08504235
-## q65       3.54623419
-## q87       3.64223867
-## q89       6.59325183
-## 
-## 
-## $`Los Angeles, CA (LO)`
-## $`Los Angeles, CA (LO)`$ConfusionMatrix
-## Confusion Matrix and Statistics
-## 
-##           Reference
-## Prediction  1  2  3
-##          1 26  0  0
-##          2  0 79  1
-##          3  0  0  3
-## 
-## Overall Statistics
-##                                           
-##                Accuracy : 0.9908          
-##                  95% CI : (0.9499, 0.9998)
-##     No Information Rate : 0.7248          
-##     P-Value [Acc &gt; NIR] : 2.45e-14        
-##                                           
-##                   Kappa : 0.9776          
-##                                           
-##  Mcnemar&#39;s Test P-Value : NA              
-## 
-## Statistics by Class:
-## 
-##                      Class: 1 Class: 2 Class: 3
-## Sensitivity            1.0000   1.0000  0.75000
-## Specificity            1.0000   0.9667  1.00000
-## Pos Pred Value         1.0000   0.9875  1.00000
-## Neg Pred Value         1.0000   1.0000  0.99057
-## Prevalence             0.2385   0.7248  0.03670
-## Detection Rate         0.2385   0.7248  0.02752
-## Detection Prevalence   0.2385   0.7339  0.02752
-## Balanced Accuracy      1.0000   0.9833  0.87500
-## 
-## $`Los Angeles, CA (LO)`$PerformanceMetrics
-##  Accuracy     Kappa 
-## 0.9908257 0.9776318 
-## 
-## $`Los Angeles, CA (LO)`$VariableImportance
-##            Overall
-## sitename 0.0000000
-## age      3.0243991
-## sex      1.6814171
-## grade    2.7711948
-## race4    2.2666354
-## bmi      7.7201854
-## qnothhpl 1.3164329
-## q17      2.1851660
-## q21      2.2621528
-## q23      0.4848750
-## q26      0.7436813
-## q30      0.6642883
-## q41      2.8010437
-## q47      2.0703394
-## q49      1.3376210
-## q50      0.6534617
-## q52      0.2169110
-## q53      0.1646429
-## q63      1.1879617
-## q65      2.6838314
-## q87      2.1434462
-## q89      2.7766339
-## 
-## 
-## $`Newark, NJ (NW)`
-## $`Newark, NJ (NW)`$ConfusionMatrix
-## Confusion Matrix and Statistics
-## 
-##           Reference
-## Prediction  1  2  3
-##          1 40  0  0
-##          2  0 89  0
-##          3  0  0 13
-## 
-## Overall Statistics
-##                                      
-##                Accuracy : 1          
-##                  95% CI : (0.9744, 1)
-##     No Information Rate : 0.6268     
-##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16  
-##                                      
-##                   Kappa : 1          
-##                                      
-##  Mcnemar&#39;s Test P-Value : NA         
-## 
-## Statistics by Class:
-## 
-##                      Class: 1 Class: 2 Class: 3
-## Sensitivity            1.0000   1.0000  1.00000
-## Specificity            1.0000   1.0000  1.00000
-## Pos Pred Value         1.0000   1.0000  1.00000
-## Neg Pred Value         1.0000   1.0000  1.00000
-## Prevalence             0.2817   0.6268  0.09155
-## Detection Rate         0.2817   0.6268  0.09155
-## Detection Prevalence   0.2817   0.6268  0.09155
-## Balanced Accuracy      1.0000   1.0000  1.00000
-## 
-## $`Newark, NJ (NW)`$PerformanceMetrics
-## Accuracy    Kappa 
-##        1        1 
-## 
-## $`Newark, NJ (NW)`$VariableImportance
-##             Overall
-## sitename  0.0000000
-## age       5.0295129
-## sex       1.7995323
-## grade     4.6488087
-## race4     3.5307033
-## bmi      10.1372871
-## qnothhpl  2.4440414
-## q17       4.1806266
-## q21       2.6576061
-## q23       1.2598000
-## q26       1.3285142
-## q30       1.2926502
-## q41       4.1790279
-## q47       7.6376616
-## q49       3.2315548
-## q50       0.3046091
-## q52       0.3176436
-## q53       0.2351847
-## q63       1.9711757
-## q65       3.4283697
-## q87       3.5494155
-## q89       5.2425968
-## 
-## 
-## $`Orange County, FL (OL)`
-## $`Orange County, FL (OL)`$ConfusionMatrix
-## Confusion Matrix and Statistics
-## 
-##           Reference
-## Prediction  1  2  3
-##          1 22  0  0
-##          2  0 92  0
-##          3  0  0  9
-## 
-## Overall Statistics
-##                                      
-##                Accuracy : 1          
-##                  95% CI : (0.9705, 1)
-##     No Information Rate : 0.748      
-##     P-Value [Acc &gt; NIR] : 3.073e-16  
-##                                      
-##                   Kappa : 1          
-##                                      
-##  Mcnemar&#39;s Test P-Value : NA         
-## 
-## Statistics by Class:
-## 
-##                      Class: 1 Class: 2 Class: 3
-## Sensitivity            1.0000    1.000  1.00000
-## Specificity            1.0000    1.000  1.00000
-## Pos Pred Value         1.0000    1.000  1.00000
-## Neg Pred Value         1.0000    1.000  1.00000
-## Prevalence             0.1789    0.748  0.07317
-## Detection Rate         0.1789    0.748  0.07317
-## Detection Prevalence   0.1789    0.748  0.07317
-## Balanced Accuracy      1.0000    1.000  1.00000
-## 
-## $`Orange County, FL (OL)`$PerformanceMetrics
-## Accuracy    Kappa 
-##        1        1 
-## 
-## $`Orange County, FL (OL)`$VariableImportance
-##             Overall
-## sitename 0.00000000
-## age      3.39865121
-## sex      1.06012064
-## grade    2.81077225
-## race4    3.42924523
-## bmi      7.52170271
-## qnothhpl 2.21748511
-## q17      2.52316201
-## q21      2.35608774
-## q23      0.79313179
-## q26      0.79053045
-## q30      0.78373478
-## q41      2.99130370
-## q47      3.61042697
-## q49      2.11396204
-## q50      0.32600539
-## q52      0.03107345
-## q53      0.01809026
-## q63      1.61239985
-## q65      1.82172088
-## q87      2.24072971
-## q89      4.04770015
-## 
-## 
-## $`Palm Beach County, FL (PB)`
-## $`Palm Beach County, FL (PB)`$ConfusionMatrix
-## Confusion Matrix and Statistics
-## 
-##           Reference
-## Prediction   1   2   3
-##          1  56   0   0
-##          2   2 224   1
-##          3   0   0  22
-## 
-## Overall Statistics
-##                                          
-##                Accuracy : 0.9902         
-##                  95% CI : (0.9715, 0.998)
-##     No Information Rate : 0.7344         
-##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16      
-##                                          
-##                   Kappa : 0.9762         
-##                                          
-##  Mcnemar&#39;s Test P-Value : NA             
-## 
-## Statistics by Class:
-## 
-##                      Class: 1 Class: 2 Class: 3
-## Sensitivity            0.9655   1.0000  0.95652
-## Specificity            1.0000   0.9630  1.00000
-## Pos Pred Value         1.0000   0.9868  1.00000
-## Neg Pred Value         0.9920   1.0000  0.99647
-## Prevalence             0.1902   0.7344  0.07541
-## Detection Rate         0.1836   0.7344  0.07213
-## Detection Prevalence   0.1836   0.7443  0.07213
-## Balanced Accuracy      0.9828   0.9815  0.97826
-## 
-## $`Palm Beach County, FL (PB)`$PerformanceMetrics
-##  Accuracy     Kappa 
-## 0.9901639 0.9761861 
-## 
-## $`Palm Beach County, FL (PB)`$VariableImportance
-##             Overall
-## sitename  0.0000000
-## age       7.9983435
-## sex       2.3684270
-## grade     6.9663404
-## race4     7.6819670
-## bmi      17.2016623
-## qnothhpl  3.3729672
-## q17       7.7256840
-## q21       5.3000673
-## q23       2.0231428
-## q26       3.4237408
-## q30       3.4194857
-## q41       9.4488872
-## q47      10.4582638
-## q49       6.7428661
-## q50       1.0391182
-## q52       0.4334793
-## q53       0.7623024
-## q63       4.5174409
-## q65       4.4856992
-## q87       4.1354800
-## q89       8.2977290
-## 
-## 
-## $`Philadelphia, PA (PH)`
-## $`Philadelphia, PA (PH)`$ConfusionMatrix
-## Confusion Matrix and Statistics
-## 
-##           Reference
-## Prediction   1   2   3
-##          1 102   0   0
-##          2   1  59   0
-##          3   0   0  10
-## 
-## Overall Statistics
-##                                          
-##                Accuracy : 0.9942         
-##                  95% CI : (0.968, 0.9999)
-##     No Information Rate : 0.5988         
-##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16      
-##                                          
-##                   Kappa : 0.9889         
-##                                          
-##  Mcnemar&#39;s Test P-Value : NA             
-## 
-## Statistics by Class:
-## 
-##                      Class: 1 Class: 2 Class: 3
-## Sensitivity            0.9903   1.0000  1.00000
-## Specificity            1.0000   0.9912  1.00000
-## Pos Pred Value         1.0000   0.9833  1.00000
-## Neg Pred Value         0.9857   1.0000  1.00000
-## Prevalence             0.5988   0.3430  0.05814
-## Detection Rate         0.5930   0.3430  0.05814
-## Detection Prevalence   0.5930   0.3488  0.05814
-## Balanced Accuracy      0.9951   0.9956  1.00000
-## 
-## $`Philadelphia, PA (PH)`$PerformanceMetrics
-##  Accuracy     Kappa 
-## 0.9941860 0.9888587 
-## 
-## $`Philadelphia, PA (PH)`$VariableImportance
-##               Overall
-## sitename  0.000000000
-## age       7.222755366
-## sex       1.902037372
-## grade     4.481423962
-## race4     7.613309202
-## bmi      11.154703623
-## qnothhpl  3.464025888
-## q17       4.713291433
-## q21       0.946261597
-## q23       1.285732845
-## q26       2.734416715
-## q30       2.253763950
-## q41       5.116283999
-## q47       7.054838291
-## q49       3.529633022
-## q50       0.000000000
-## q52       0.003482051
-## q53       0.003043219
-## q63       2.564436836
-## q65       4.908618603
-## q87       3.273114147
-## q89       8.223281410
-## 
-## 
-## $`Portland, OR (PO)`
-## $`Portland, OR (PO)`$ConfusionMatrix
-## Confusion Matrix and Statistics
-## 
-##           Reference
-## Prediction   1   2   3
-##          1  76   0   0
-##          2   0 128   1
-##          3   0   0   8
-## 
-## Overall Statistics
-##                                           
-##                Accuracy : 0.9953          
-##                  95% CI : (0.9741, 0.9999)
-##     No Information Rate : 0.6009          
-##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
-##                                           
-##                   Kappa : 0.9907          
-##                                           
-##  Mcnemar&#39;s Test P-Value : NA              
-## 
-## Statistics by Class:
-## 
-##                      Class: 1 Class: 2 Class: 3
-## Sensitivity            1.0000   1.0000  0.88889
-## Specificity            1.0000   0.9882  1.00000
-## Pos Pred Value         1.0000   0.9922  1.00000
-## Neg Pred Value         1.0000   1.0000  0.99512
-## Prevalence             0.3568   0.6009  0.04225
-## Detection Rate         0.3568   0.6009  0.03756
-## Detection Prevalence   0.3568   0.6056  0.03756
-## Balanced Accuracy      1.0000   0.9941  0.94444
-## 
-## $`Portland, OR (PO)`$PerformanceMetrics
-##  Accuracy     Kappa 
-## 0.9953052 0.9907428 
-## 
-## $`Portland, OR (PO)`$VariableImportance
-##             Overall
-## sitename  0.0000000
-## age       7.9776210
-## sex       3.3723187
-## grade     6.7377617
-## race4     5.4408932
-## bmi      15.1296366
-## qnothhpl  4.5320101
-## q17       4.6138198
-## q21       3.5987357
-## q23       2.7423963
-## q26       2.6148339
-## q30       2.8480105
-## q41       7.8424344
-## q47       7.9470387
-## q49       4.6054253
-## q50       1.2915562
-## q52       0.0530484
-## q53       0.3516913
-## q63       2.6738646
-## q65       5.3448025
-## q87       3.8411689
-## q89       7.5911664
-## 
-## 
-## $`Pasco County, FL (PS)`
-## $`Pasco County, FL (PS)`$ConfusionMatrix
-## Confusion Matrix and Statistics
-## 
-##           Reference
-## Prediction   1   2   3
-##          1  37   0   0
-##          2   1 153   1
-##          3   0   0   8
-## 
-## Overall Statistics
-##                                           
-##                Accuracy : 0.99            
-##                  95% CI : (0.9643, 0.9988)
-##     No Information Rate : 0.765           
-##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
-##                                           
-##                   Kappa : 0.973           
-##                                           
-##  Mcnemar&#39;s Test P-Value : NA              
-## 
-## Statistics by Class:
-## 
-##                      Class: 1 Class: 2 Class: 3
-## Sensitivity            0.9737   1.0000   0.8889
-## Specificity            1.0000   0.9574   1.0000
-## Pos Pred Value         1.0000   0.9871   1.0000
-## Neg Pred Value         0.9939   1.0000   0.9948
-## Prevalence             0.1900   0.7650   0.0450
-## Detection Rate         0.1850   0.7650   0.0400
-## Detection Prevalence   0.1850   0.7750   0.0400
-## Balanced Accuracy      0.9868   0.9787   0.9444
-## 
-## $`Pasco County, FL (PS)`$PerformanceMetrics
-##  Accuracy     Kappa 
-## 0.9900000 0.9729857 
-## 
-## $`Pasco County, FL (PS)`$VariableImportance
-##              Overall
-## sitename  0.00000000
-## age       4.98998098
-## sex       1.62466384
-## grade     4.43317550
-## race4     2.61083679
-## bmi      12.12894407
-## qnothhpl  2.40317005
-## q17       5.58268811
-## q21       3.50927791
-## q23       1.77472445
-## q26       1.47727549
-## q30       2.34261950
-## q41       3.89173066
-## q47       6.40988624
-## q49       3.30505568
-## q50       1.56115190
-## q52       0.07002248
-## q53       0.05986388
-## q63       1.83383306
-## q65       3.53008680
-## q87       1.64407933
-## q89       4.41021061
-## 
-## 
-## $`San Francisco, CA (SF)`
-## $`San Francisco, CA (SF)`$ConfusionMatrix
-## Confusion Matrix and Statistics
-## 
-##           Reference
-## Prediction   1   2   3
-##          1  72   0   0
-##          2   1 116   1
-##          3   0   0  13
-## 
-## Overall Statistics
-##                                           
-##                Accuracy : 0.9901          
-##                  95% CI : (0.9649, 0.9988)
-##     No Information Rate : 0.5714          
-##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
-##                                           
-##                   Kappa : 0.9816          
-##                                           
-##  Mcnemar&#39;s Test P-Value : NA              
-## 
-## Statistics by Class:
-## 
-##                      Class: 1 Class: 2 Class: 3
-## Sensitivity            0.9863   1.0000  0.92857
-## Specificity            1.0000   0.9770  1.00000
-## Pos Pred Value         1.0000   0.9831  1.00000
-## Neg Pred Value         0.9924   1.0000  0.99474
-## Prevalence             0.3596   0.5714  0.06897
-## Detection Rate         0.3547   0.5714  0.06404
-## Detection Prevalence   0.3547   0.5813  0.06404
-## Balanced Accuracy      0.9932   0.9885  0.96429
-## 
-## $`San Francisco, CA (SF)`$PerformanceMetrics
-##  Accuracy     Kappa 
-## 0.9901478 0.9816148 
-## 
-## $`San Francisco, CA (SF)`$VariableImportance
-##              Overall
-## sitename  0.00000000
-## age       7.24166275
-## sex       2.88612389
-## grade     5.10407763
-## race4     6.07337539
-## bmi      15.10738139
-## qnothhpl  5.42894253
-## q17       5.48420015
-## q21       3.96863166
-## q23       1.66698684
-## q26       2.68799639
-## q30       3.05523560
-## q41       6.65098558
-## q47       7.82946125
-## q49       5.94233898
-## q50       1.36089474
-## q52       0.06743793
-## q53       0.31263288
-## q63       3.09401791
-## q65       4.65232653
-## q87       3.36995781
-## q89       9.04688243
-## 
-## 
-## $`Shelby County, TN (ST)`
-## $`Shelby County, TN (ST)`$ConfusionMatrix
-## Confusion Matrix and Statistics
-## 
-##           Reference
-## Prediction   1   2   3
-##          1  42   0   0
-##          2   0 107   0
-##          3   0   0  11
-## 
-## Overall Statistics
-##                                      
-##                Accuracy : 1          
-##                  95% CI : (0.9772, 1)
-##     No Information Rate : 0.6688     
-##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16  
-##                                      
-##                   Kappa : 1          
-##                                      
-##  Mcnemar&#39;s Test P-Value : NA         
-## 
-## Statistics by Class:
-## 
-##                      Class: 1 Class: 2 Class: 3
-## Sensitivity            1.0000   1.0000  1.00000
-## Specificity            1.0000   1.0000  1.00000
-## Pos Pred Value         1.0000   1.0000  1.00000
-## Neg Pred Value         1.0000   1.0000  1.00000
-## Prevalence             0.2625   0.6687  0.06875
-## Detection Rate         0.2625   0.6687  0.06875
-## Detection Prevalence   0.2625   0.6687  0.06875
-## Balanced Accuracy      1.0000   1.0000  1.00000
-## 
-## $`Shelby County, TN (ST)`$PerformanceMetrics
-## Accuracy    Kappa 
-##        1        1 
-## 
-## $`Shelby County, TN (ST)`$VariableImportance
-##             Overall
-## sitename  0.0000000
-## age       4.6689160
-## sex       1.8865587
-## grade     4.1245172
-## race4     3.5848204
-## bmi       9.8520701
-## qnothhpl  1.9980501
-## q17       6.5544913
-## q21       2.2049316
-## q23       1.4574625
-## q26       1.4345031
-## q30       1.2863318
-## q41       5.2226813
-## q47      10.4602818
-## q49       3.3753809
-## q50       0.4362446
-## q52       0.2306358
-## q53       0.6192863
-## q63       2.0662258
-## q65       3.2823809
-## q87       1.7949166
-## q89       5.7223507</code></pre>
+# Save the Excel workbook
+saveWorkbook(wb, &quot;random_forest_each_district.xlsx&quot;, overwrite = TRUE)</code></pre>
+</div>
 </div>
 
 

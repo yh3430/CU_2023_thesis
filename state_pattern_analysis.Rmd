@@ -174,7 +174,8 @@ confusionMatrix(model_ridge)
 varImp(model_ridge)
 plot(varImp(model_ridge))
 
-var_import = varImp(model_ridge)$importance
+var_import = varImp(model_ridge)$importance 
+  
 ```
 
 
@@ -526,6 +527,8 @@ var_importance$importance %>%
   filter(x3 > 50) %>% 
   select(x3) %>% 
   arrange(desc(x3))
+
+var_import = varImp(model_ridge)$importance
 ```
 
 
@@ -581,6 +584,8 @@ var_importance$importance %>%
   filter(x3 > 50) %>% 
   select(x3) %>% 
   arrange(desc(x3))
+
+var_import = varImp(model_ridge)$importance
 ```
 
 
@@ -636,6 +641,8 @@ var_importance$importance %>%
   filter(x3 > 50) %>% 
   select(x3) %>% 
   arrange(desc(x3))
+
+var_import = varImp(model_ridge)$importance
 ```
 
 
